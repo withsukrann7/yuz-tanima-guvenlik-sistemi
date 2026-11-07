@@ -10,7 +10,7 @@ import logging
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QMessageBox, QLabel
 from PyQt5.uic import loadUi
 
 from . import config
