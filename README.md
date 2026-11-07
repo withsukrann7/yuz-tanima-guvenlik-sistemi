@@ -49,7 +49,7 @@ Depoda bulunmayan (veya `.gitignore` ile dışarıda tutulan) şu öğeleri proj
 
 | Değişken | Anlamı |
 |---|---|
-| `YUZ_DB_HOST`, `YUZ_DB_PORT`, `YUZ_DB_NAME`, `YUZ_DB_USER`, `YUZ_DB_PASSWORD` | PostgreSQL bağlantısı (varsayılanlar: localhost, 5432, yuz_tanima, postgres) |
+| `YUZ_DB_HOST`, `YUZ_DB_PORT`, `YUZ_DB_NAME`, `YUZ_DB_USER`, `YUZ_DB_PASSWORD` | PostgreSQL bağlantısı |
 | `YUZ_ADMIN_USER`, `YUZ_ADMIN_PASSWORD` | Giriş ekranı kullanıcısı. **Varsayılan yoktur**; tanımlı değilse giriş yapılamaz ve neden belirtilir |
 | `YUZ_KAMERA_INDEKSI` | Kamera numarası (varsayılan 0) |
 
