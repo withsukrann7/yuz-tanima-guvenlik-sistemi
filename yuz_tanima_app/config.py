@@ -80,7 +80,10 @@ def yonetici_bilgileri():
 BILDIRIM_BEKLEME_SN = 10          # aynı kişi için tekrar kayıt/bildirim aralığı
 MODEL_ADI           = "VGG-Face"
 MESAFE_METRIGI      = "cosine"
-DEDEKTOR            = "mediapipe"
+# DeepFace verification uses OpenCV's detector internally. Live camera face
+# localization is handled separately by our MediaPipe Tasks detector in
+# kamera.py, avoiding DeepFace's legacy MediaPipe graph asset requirement.
+DEDEKTOR            = "opencv"
 KARE_ATLAMA         = 20          # her N karede bir analiz
 KAMERA_INDEKSI      = int(os.getenv("YUZ_KAMERA_INDEKSI", "0"))
 MEDIAPIPE_MIN_GUVEN = 0.5
