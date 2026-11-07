@@ -1,0 +1,26 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Gizli bilgiler ve yerel yapılandırma
+.env
+
+# Kişisel/biyometrik veriler — asla repoya girmemeli
+known_faces/
+yuzler/
+snapshots/
+arsiv/silinen_yuzler/
+
+# Yerel loglar
+*.log
+security_log.json
+security_log.bozuk.json
+security_log.tmp
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+.env.example

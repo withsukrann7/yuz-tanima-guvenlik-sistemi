@@ -1,0 +1,12 @@
+# Python 3.10 – 3.12 önerilir (TensorFlow 3.13'ü henüz desteklemeyebilir).
+# Sürümler orijinal projede kayıtlı olmadığından alt sınır olarak verilmiştir.
+PyQt5>=5.15
+opencv-python>=4.8,<5   # 5.x paketinde Haar yüz bulma dosyaları yok
+numpy
+psycopg2-binary>=2.9
+python-dotenv>=1.0
+openpyxl>=3.1          # "Excel'e Aktar" özelliği
+deepface>=0.0.93       # yüz tanıma (VGG-Face)
+tensorflow>=2.12       # DeepFace arka ucu
+werkzeug              # DeepFace'in içe aktardığı; eksik kurulabiliyor
+tf-keras               # TensorFlow >= 2.16 ile DeepFace için gerekli
