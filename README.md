@@ -5,7 +5,7 @@
 ![DeepFace](https://img.shields.io/badge/AI-DeepFace-green?style=for-the-badge)
 ![PyQt5](https://img.shields.io/badge/Desktop-PyQt5-orange?style=for-the-badge)
 
-🎓 **Bitirme Projesi — Zonguldak Bülent Ecevit Üniversitesi** (akademik amaçlı prototip)
+🎓 **Zonguldak Bülent Ecevit Üniversitesi** (akademik amaçlı prototip)
 
 Gerçek zamanlı kamera görüntüsünde yüz algılar (OpenCV), DeepFace (VGG-Face) ile kayıtlı yetkili kişilerle karşılaştırır, sonucu PostgreSQL'e yazar ve yetkisiz kişi tespitinde masaüstü arayüzünde uyarı penceresi gösterir (sesli alarm yoktur).
 
@@ -108,11 +108,4 @@ set YUZ_TEST_DEEPFACE=1 & pytest tests/test_deepface_opsiyonel.py
 - Kullanıcı silme `isim + çalışan ID` ile yapılır (şemada benzersiz anahtar yoktu).
 - Haar kaskadı ayarları (`config.py`) gevşektir; yüz olmayan nesneler yanlışlıkla "bilinmeyen kişi" alarmı üretebilir (gerçek kamerada denenmedi).
 
-## Ekip
 
-| İsim | Rol |
-|------|------|
-| Emircan Alkan | Kamera & Görüntü İşleme Geliştirici |
-| Embiya Talas | Yapay Zeka & Yüz Tanıma Geliştirici |
-| Şükran Yılmaz | Masaüstü Uygulama Geliştirici |
-| Kaan Baydere | Veritabanı Geliştirici |
