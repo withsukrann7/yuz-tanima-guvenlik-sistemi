@@ -20,7 +20,10 @@ class YuzBulucu:
         self._video = video
         mode = mp.tasks.vision.RunningMode.VIDEO if video else mp.tasks.vision.RunningMode.IMAGE
         options = mp.tasks.vision.FaceDetectorOptions(
-            base_options=mp.tasks.BaseOptions(model_asset_path=str(model)),
+            # Pass bytes rather than a Windows path: MediaPipe's native loader
+            # can fail when a user profile contains non-ASCII characters
+            # (for example, "Masaüstü").
+            base_options=mp.tasks.BaseOptions(model_asset_buffer=model.read_bytes()),
             running_mode=mode,
             min_detection_confidence=config.MEDIAPIPE_MIN_GUVEN,
         )
