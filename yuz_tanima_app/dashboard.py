@@ -19,9 +19,10 @@ logger = logging.getLogger(__name__)
 class Dashboard(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Yüz Tanıma Güvenlik Sistemi")
+        self.setWindowTitle("Aegis | Güvenlik Operasyonları")
         self.setMinimumSize(1200, 750)
-        self.setStyleSheet(f"background:{SAYFA_BG};")
+        self.setFont(QFont("Segoe UI", 10))
+        self.setStyleSheet(f"background:{SAYFA_BG}; QToolTip{{background:#111827;color:#fff;border:1px solid #344055;padding:6px 8px;border-radius:5px;}} QScrollBar:vertical{{background:transparent;width:9px;margin:2px;}} QScrollBar::handle:vertical{{background:#CBD1DD;border-radius:4px;min-height:28px;}} QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical{{height:0;}}")
 
         self._kamera_thread = None
         self._takili_threadler = []     # zamanında durmayan thread'ler (GC'den korunur)
@@ -58,13 +59,13 @@ class Dashboard(QMainWindow):
     #  SOL MENÜ
     # ──────────────────────────────────────
     def _sol_menu(self):
-        w = QWidget(); w.setFixedWidth(225); w.setStyleSheet(f"background:{KOYU_BG};")
-        lay = QVBoxLayout(w); lay.setContentsMargins(14,24,14,20); lay.setSpacing(2)
+        w = QWidget(); w.setFixedWidth(242); w.setStyleSheet(f"background:{KOYU_BG};")
+        lay = QVBoxLayout(w); lay.setContentsMargins(18,25,18,20); lay.setSpacing(4)
 
-        logo = QLabel("Yüz Tanıma\nSistemi")
-        logo.setStyleSheet("color:white;font-size:17px;font-weight:bold;font-family:'Segoe UI';border:none;padding-bottom:4px;")
+        logo = QLabel("AEGIS  /  SECURITY")
+        logo.setStyleSheet("color:white;font-size:14px;font-weight:700;font-family:'Segoe UI';border:none;padding-bottom:4px;letter-spacing:1px;")
         lay.addWidget(logo)
-        alt = QLabel("Güvenlik Yönetimi")
+        alt = QLabel("GÜVENLİK OPERASYON MERKEZİ")
         alt.setStyleSheet("color:rgba(255,255,255,0.4);font-size:11px;font-family:'Segoe UI';border:none;padding-bottom:4px;")
         lay.addWidget(alt)
 
@@ -84,7 +85,7 @@ class Dashboard(QMainWindow):
         sep.setStyleSheet("color:rgba(255,255,255,0.12);margin:8px 0;"); lay.addWidget(sep)
 
         self._menu_btns = []
-        for ikon, isim, idx in [("🏠","Ana Sayfa",0),("👤","Yüz Kaydı",1),("📋","Kullanıcı Listesi",2),("📷","Canlı İzleme",3),("🕐","Geçmiş Kayıtları",4)]:
+        for ikon, isim, idx in [("01","Ana Sayfa",0),("02","Yüz Kaydı",1),("03","Kullanıcı Listesi",2),("04","Canlı İzleme",3),("05","Geçmiş Kayıtları",4)]:
             btn = QPushButton(f"  {ikon}  {isim}"); btn.setFixedHeight(44); btn.setCursor(Qt.PointingHandCursor)
             btn.setStyleSheet(self._menu_stili(False))
             btn.clicked.connect(lambda _, i=idx: self._git(i))
@@ -94,7 +95,7 @@ class Dashboard(QMainWindow):
         sep2 = QFrame(); sep2.setFrameShape(QFrame.HLine)
         sep2.setStyleSheet("color:rgba(255,255,255,0.12);margin-bottom:8px;"); lay.addWidget(sep2)
 
-        cikis = QPushButton("  🚪  Çıkış Yap"); cikis.setFixedHeight(44); cikis.setCursor(Qt.PointingHandCursor)
+        cikis = QPushButton("  Oturumu Kapat"); cikis.setFixedHeight(44); cikis.setCursor(Qt.PointingHandCursor)
         cikis.setStyleSheet("QPushButton{background:transparent;color:#ff4d4d;border:1px solid rgba(255,77,77,0.35);border-radius:8px;font-size:13px;font-family:'Segoe UI';text-align:left;padding-left:8px;}"
                             "QPushButton:hover{background:rgba(255,77,77,0.12);}")
         cikis.clicked.connect(self._cikis); lay.addWidget(cikis)
@@ -103,9 +104,9 @@ class Dashboard(QMainWindow):
 
     def _menu_stili(self, aktif):
         if aktif:
-            return f"QPushButton{{background:{ANA_MAVI};color:white;border:none;border-radius:8px;font-size:13px;font-family:'Segoe UI';text-align:left;padding-left:8px;}}"
-        return ("QPushButton{background:transparent;color:rgba(255,255,255,0.6);border:none;border-radius:8px;font-size:13px;font-family:'Segoe UI';text-align:left;padding-left:8px;}"
-                "QPushButton:hover{background:rgba(255,255,255,0.08);color:white;}")
+            return f"QPushButton{{background:#28243E;color:white;border:1px solid #3B3559;border-left:3px solid {ANA_MAVI};border-radius:8px;font-size:13px;font-weight:600;font-family:'Segoe UI';text-align:left;padding-left:8px;}}"
+        return ("QPushButton{background:transparent;color:#AAB2C2;border:1px solid transparent;border-radius:8px;font-size:13px;font-family:'Segoe UI';text-align:left;padding-left:8px;}"
+                "QPushButton:hover{background:#1D2636;color:white;border-color:#2A3548;}")
 
     def _git(self, idx):
         for i, b in enumerate(self._menu_btns): b.setStyleSheet(self._menu_stili(i == idx))
@@ -299,7 +300,7 @@ class Dashboard(QMainWindow):
     # ──────────────────────────────────────
     def _sayfa_wrap(self, baslik_txt, alt_txt):
         w = QWidget(); w.setStyleSheet(f"background:{SAYFA_BG};")
-        lay = QVBoxLayout(w); lay.setContentsMargins(32,28,32,28); lay.setSpacing(0)
+        lay = QVBoxLayout(w); lay.setContentsMargins(34,30,34,30); lay.setSpacing(0)
         lay.addWidget(baslik_label(baslik_txt))
         sub = alt_baslik_label(alt_txt); sub.setContentsMargins(0,4,0,20); lay.addWidget(sub)
         return w, lay
@@ -324,7 +325,7 @@ class Dashboard(QMainWindow):
     # ══════════════════════════════════════
     def _dashboard_sayfasi(self):
         self._dash_w = QWidget(); self._dash_w.setStyleSheet(f"background:{SAYFA_BG};")
-        ml = QVBoxLayout(self._dash_w); ml.setContentsMargins(32,28,32,28); ml.setSpacing(0)
+        ml = QVBoxLayout(self._dash_w); ml.setContentsMargins(34,30,34,30); ml.setSpacing(0)
         ml.addWidget(baslik_label("Ana Dashboard"))
         sub = alt_baslik_label("Yüz tanıma sistemi genel görünüm ve istatistikler"); sub.setContentsMargins(0,4,0,20); ml.addWidget(sub)
         self._dash_icerik = QWidget(); self._dash_icerik_lay = QVBoxLayout(self._dash_icerik); self._dash_icerik_lay.setSpacing(16)
@@ -351,10 +352,10 @@ class Dashboard(QMainWindow):
 
         krow = QHBoxLayout(); krow.setSpacing(16)
         for sayi, etiket, ikon, bg, fg in [
-            (toplam_k,"Toplam Kullanıcı","👥","#dbeafe","#1d4ed8"),
-            (bugun_g,"Bugünkü Giriş","✅","#dcfce7","#15803d"),
-            (1 if self._kamera_aktif_mi() else 0,"Aktif Kamera","📷","#ede9fe","#7c3aed"),
-            (f"%{basari}","Başarı Oranı","🎯","#fef3c7","#d97706"),
+            (toplam_k,"Toplam Kullanıcı","ID","#EEF0FF","#5141B8"),
+            (bugun_g,"Bugünkü Giriş","✓","#E8F5F0","#16846D"),
+            (1 if self._kamera_aktif_mi() else 0,"Aktif Kamera","◉","#F0EDFA","#7156B8"),
+            (f"%{basari}","Başarı Oranı","%","#F8F0E4","#A96C22"),
         ]:
             krow.addWidget(self._stat_kart(sayi,etiket,ikon,bg,fg))
         self._dash_icerik_lay.addLayout(krow)

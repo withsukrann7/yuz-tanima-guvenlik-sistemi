@@ -11,16 +11,16 @@ from .yuz_tanima import gorsel_oku
 # ══════════════════════════════════════════
 #  RENKLER
 # ══════════════════════════════════════════
-KOYU_BG   = "#1a1a2e"
-ANA_MAVI  = "#4A3FC7"
-SAYFA_BG  = "#f0f2f5"
-YAZI_KOYU = "#1a1a2e"
-YAZI_GRI  = "#6b7280"
-SINIR     = "#e5e7eb"
-YESIL     = "#22c55e"
-KIRMIZI   = "#ef4444"
-TURUNCU   = "#f59e0b"
-AVATAR_RENKLER = ["#4A3FC7","#059669","#d97706","#dc2626","#7c3aed","#0891b2","#be185d"]
+KOYU_BG   = "#111827"
+ANA_MAVI  = "#6D5AE6"
+SAYFA_BG  = "#F4F5F8"
+YAZI_KOYU = "#172033"
+YAZI_GRI  = "#687386"
+SINIR     = "#E3E7EF"
+YESIL     = "#159A79"
+KIRMIZI   = "#D84A5B"
+TURUNCU   = "#C88732"
+AVATAR_RENKLER = ["#6D5AE6","#168A78","#B77932","#C84B5D","#7156B8","#287C9C","#A64D79"]
 
 # ══════════════════════════════════════════
 #  YARDIMCI FONKSİYONLAR
@@ -46,7 +46,7 @@ def pixmap_yukle(yol):
 
 def kart_frame(parent=None, radius=12):
     f = QFrame(parent)
-    f.setStyleSheet(f"background: white; border-radius: {radius}px; border: 1px solid {SINIR};")
+    f.setStyleSheet(f"background: #FFFFFF; border-radius: {radius}px; border: 1px solid {SINIR};")
     return f
 
 def baslik_label(metin, boyut=22):
@@ -62,12 +62,12 @@ def alt_baslik_label(metin):
     return l
 
 def input_stili():
-    return (f"QLineEdit{{border:1.5px solid {SINIR};border-radius:8px;padding:0 12px;"
-            f"font-size:13px;color:{YAZI_KOYU};background:white;}}"
+    return (f"QLineEdit{{border:1px solid {SINIR};border-radius:9px;padding:0 12px;"
+            f"font-size:13px;color:{YAZI_KOYU};background:#FFFFFF;}}"
             f"QLineEdit:focus{{border-color:{ANA_MAVI};}}")
 
 def combobox_stili():
-    return (f"QComboBox{{border:1.5px solid {SINIR};border-radius:8px;padding:0 12px;"
+    return (f"QComboBox{{border:1px solid {SINIR};border-radius:9px;padding:0 12px;"
             f"font-size:13px;color:{YAZI_KOYU};background:white;}}"
             f"QComboBox:focus{{border-color:{ANA_MAVI};}}"
             f"QComboBox::drop-down{{border:none;width:24px;}}")
