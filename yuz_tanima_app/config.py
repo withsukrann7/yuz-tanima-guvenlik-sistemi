@@ -31,6 +31,7 @@ LOGO_DOSYASI          = PROJE_KOKU / "logo.png"
 LOGIN_ARKAPLAN        = PROJE_KOKU / "login_bg.png"
 
 DESTEKLENEN_UZANTILAR = (".jpg", ".jpeg", ".png", ".bmp")
+MEDIAPIPE_MODEL       = PROJE_KOKU / "models" / "blaze_face_short_range.tflite"
 
 
 def yol_coz(yol):
@@ -79,9 +80,7 @@ def yonetici_bilgileri():
 BILDIRIM_BEKLEME_SN = 10          # aynı kişi için tekrar kayıt/bildirim aralığı
 MODEL_ADI           = "VGG-Face"
 MESAFE_METRIGI      = "cosine"
-DEDEKTOR            = "opencv"
+DEDEKTOR            = "mediapipe"
 KARE_ATLAMA         = 20          # her N karede bir analiz
 KAMERA_INDEKSI      = int(os.getenv("YUZ_KAMERA_INDEKSI", "0"))
-HAAR_OLCEK          = 1.05
-HAAR_KOMSU          = 3
-HAAR_MIN_BOYUT      = (30, 30)
+MEDIAPIPE_MIN_GUVEN = 0.5

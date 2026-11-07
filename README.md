@@ -32,6 +32,7 @@ python main.py
 ```
 
 İlk kamera analizinde DeepFace VGG-Face ağırlıklarını (~580 MB) internetten indirir; bu bir kez olur.
+MediaPipe'ın BlazeFace kısa mesafe modeli `models/blaze_face_short_range.tflite` olarak depoya eklenmiştir.
 
 ### Proje kökünde bulunması gereken dosyalar
 Depoda bulunmayan (veya `.gitignore` ile dışarıda tutulan) şu öğeleri proje köküne koyun:
@@ -66,6 +67,7 @@ Depoda bulunmayan (veya `.gitignore` ile dışarıda tutulan) şu öğeleri proj
 │   ├── giris.py                 # giriş penceresi (ui/login.ui)
 │   ├── dashboard.py             # ana pencere ve 5 sayfa
 │   └── arayuz_ortak.py          # renkler, widget yardımcıları, diyaloglar
+├── models/blaze_face_short_range.tflite # MediaPipe yüz algılama modeli
 ├── veritabani/schema.sql        # tablolar (kodun sorgularından çıkarıldı)
 ├── tests/                       # pytest
 ├── arsiv/                       # eski sürümler (çalıştırılmaz) — arsiv/README.md
@@ -79,7 +81,7 @@ Depoda bulunmayan (veya `.gitignore` ile dışarıda tutulan) şu öğeleri proj
 
 1. **Giriş** → `ui/login.ui`; bilgiler `.env`'den doğrulanır.
 2. **Yüz Kaydı** → fotoğraf `yuzler/` altına kopyalanır, kişi `yetkili_kisiler` tablosuna eklenir.
-3. **Canlı İzleme** → kamera thread'i kareleri alır, Haar kaskadı ile yüz bulur; her `KARE_ATLAMA` karede bir, arka plan thread'inde DeepFace ile tüm yetkili yüzlerle karşılaştırır.
+3. **Canlı İzleme** → kamera thread'i MediaPipe Face Detector ile karelerde yüz bulur; her `KARE_ATLAMA` karede bir, arka plan thread'inde DeepFace ile tüm yetkili yüzlerle karşılaştırır.
 4. **Sonuç** → yetkili: `giris_kayitlari` + `security_log.json`; yetkisiz: `snapshots/` görüntüsü + `yetkisiz_kayitlar` + uyarı penceresi. Aynı kişi için kayıt/bildirim `BILDIRIM_BEKLEME_SN` (10 sn) aralıklıdır.
 5. **Yetkili listesi** = veritabanındaki **Aktif** kullanıcılar + (veritabanında karşılığı olmayan) eski `known_faces/` dosyaları. Pasif/silinmiş kullanıcılar tanınmaz. Kullanıcı silindiğinde fotoğrafları **silinmez**, `arsiv/silinen_yuzler/` altına taşınır.
 
@@ -106,6 +108,6 @@ set YUZ_TEST_DEEPFACE=1 & pytest tests/test_deepface_opsiyonel.py
 - Her analizde tüm yetkili yüzlerle tek tek karşılaştırma yapılır; kayıt sayısı arttıkça yavaşlar.
 - Arayüzdeki "Kayıt Başlat", "Düzenle", geçmiş tablosundaki 👁/🎬/📄 düğmeleri ve "Güven" sütunu orijinalde de uygulanmamıştı; olduğu gibi bırakıldı.
 - Kullanıcı silme `isim + çalışan ID` ile yapılır (şemada benzersiz anahtar yoktu).
-- Haar kaskadı ayarları (`config.py`) gevşektir; yüz olmayan nesneler yanlışlıkla "bilinmeyen kişi" alarmı üretebilir (gerçek kamerada denenmedi).
+- MediaPipe yüz algılaması farklı kamera, mesafe ve ışık koşullarında ayrıca ölçülmelidir; yüz algılama, kimlik eşleştirme doğruluğunu tek başına garanti etmez.
 
 

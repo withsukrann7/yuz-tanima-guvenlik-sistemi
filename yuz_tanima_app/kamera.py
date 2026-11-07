@@ -12,7 +12,8 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtGui import QImage
 
 from . import config
-from .yuz_tanima import FaceRecognizer, gorsel_yaz, yuz_dedektoru_yukle
+from .yuz_tanima import FaceRecognizer, gorsel_yaz
+from .yuz_bulucu import YuzBulucu
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,6 @@ class KameraThread(QThread):
         self.recognizer = FaceRecognizer()
         self._stop_flag = False
         self._last_notify = {}
-        self.face_cascade = yuz_dedektoru_yukle()      # yüklenemezse RuntimeError
         self._analysis_running = False
         self._analysis_thread = None
         self._lock = threading.Lock()
@@ -164,12 +164,14 @@ class KameraThread(QThread):
     # ── Ana döngü ───────────────────────────
     def run(self):
         cap = cv2.VideoCapture(self.camera_index)
+        yuz_bulucu = None
         try:
             if not cap.isOpened():
                 msg = f"Kamera açılamadı (indeks {self.camera_index}). Bağlantıyı ve başka bir uygulamanın kullanıp kullanmadığını kontrol edin."
                 logger.error(msg)
                 self.hata.emit(msg)
                 return
+            yuz_bulucu = YuzBulucu(video=True)
             logger.info("Kamera thread'i başlatıldı.")
 
             while not self._stop_flag:
@@ -180,16 +182,12 @@ class KameraThread(QThread):
                     self.hata.emit(msg)
                     break
 
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                faces = self.face_cascade.detectMultiScale(
-                    gray, scaleFactor=config.HAAR_OLCEK,
-                    minNeighbors=config.HAAR_KOMSU, minSize=config.HAAR_MIN_BOYUT,
-                )
                 self.frame_count += 1
+                yuzler = yuz_bulucu.tespit_et(frame, self.frame_count)
 
-                if (len(faces) > 0 and not self._analysis_running
+                if (len(yuzler) > 0 and not self._analysis_running
                         and self.frame_count % config.KARE_ATLAMA == 0):
-                    x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
+                    x, y, w, h = max(yuzler, key=lambda f: f[2] * f[3])
                     face_crop = frame[y:y + h, x:x + w].copy()
                     full_frame_copy = frame.copy()
                     with self._lock:
@@ -198,12 +196,12 @@ class KameraThread(QThread):
                         target=self._analyze_async, args=(face_crop, full_frame_copy), daemon=True
                     )
                     self._analysis_thread.start()
-                elif len(faces) == 0:
+                elif len(yuzler) == 0:
                     with self._lock:
                         self.current_label = "Yuz Algilanmadi"
                         self.current_color_bgr = (128, 128, 128)
 
-                frame = self._draw_overlay(frame, faces)
+                frame = self._draw_overlay(frame, yuzler)
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 h_px, w_px, ch = rgb.shape
                 qimg = QImage(rgb.data, w_px, h_px, ch * w_px, QImage.Format_RGB888)
@@ -213,5 +211,7 @@ class KameraThread(QThread):
             logger.exception("Kamera döngüsü beklenmedik şekilde durdu")
             self.hata.emit(f"Kamera beklenmedik şekilde durdu: {e}")
         finally:
+            if yuz_bulucu is not None:
+                yuz_bulucu.close()
             cap.release()
             logger.info("Kamera thread'i durduruldu.")

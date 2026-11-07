@@ -1,7 +1,8 @@
 # Python 3.10 – 3.12 önerilir (TensorFlow 3.13'ü henüz desteklemeyebilir).
 # Sürümler orijinal projede kayıtlı olmadığından alt sınır olarak verilmiştir.
 PyQt5>=5.15
-opencv-python>=4.8,<5   # 5.x paketinde Haar yüz bulma dosyaları yok
+opencv-contrib-python==4.11.0.86
+mediapipe==0.10.21     # kamera ve kayıt fotoğraflarında yüz bulma
 numpy
 psycopg2-binary>=2.9
 python-dotenv>=1.0

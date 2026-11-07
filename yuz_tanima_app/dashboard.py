@@ -10,6 +10,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 
 from . import config, veritabani, yuz_tanima
+from .yuz_bulucu import YuzBulucu
 from .arayuz_ortak import *
 from .kamera import KameraThread
 
@@ -469,10 +470,9 @@ class Dashboard(QMainWindow):
             self._yuklenen_foto = dosya
 
     def _yuz_say(self, goruntu) -> int:
-        """Fotoğrafta Haar ile kaç yüz bulunduğunu döndürür (kayıt öncesi kontrol)."""
-        cascade = yuz_tanima.yuz_dedektoru_yukle()
-        gri = cv2.cvtColor(goruntu, cv2.COLOR_BGR2GRAY)
-        return len(cascade.detectMultiScale(gri, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)))
+        """Fotoğraftaki yüz sayısını MediaPipe ile bulur (kayıt öncesi kontrol)."""
+        with YuzBulucu(video=False) as bulucu:
+            return len(bulucu.tespit_et(goruntu))
 
     def _kullanici_kaydet(self):
         ad = self._kayit_ad.text().strip(); soyad = self._kayit_soyad.text().strip()

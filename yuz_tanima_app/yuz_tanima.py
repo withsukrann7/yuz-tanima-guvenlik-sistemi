@@ -7,7 +7,6 @@ giriş kayıtları ile kullanıcı listesi eşleşir. Yetkili listesinin kaynağ
 Pasif veya silinmiş kullanıcılar tanınmaz.
 """
 import logging
-import os
 import re
 
 import cv2
@@ -71,36 +70,6 @@ def gorsel_yaz(yol, goruntu) -> bool:
     except Exception as e:
         logger.error("Görsel yazılamadı (%s): %s", yol, e)
         return False
-
-
-def yuz_dedektoru_yukle():
-    """Haar yüz bulucuyu güvenle yükler.
-
-    - OpenCV 5.x paketi Haar XML dosyalarını İÇERMEZ; dosya yoksa çözümü söyleyen
-      açık bir hata verilir.
-    - Windows'ta yolda ASCII olmayan karakter (ü, ı, ş...) varsa CascadeClassifier(yol)
-      dosyayı açamaz; bu durumda dosya Python ile okunup bellekten yüklenir.
-    """
-    yol = os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
-    if not os.path.exists(yol):
-        raise RuntimeError(
-            f"Yüz bulma dosyası bulunamadı: {yol}\n"
-            "OpenCV 5.x bu dosyayı içermiyor. Çözüm:\n"
-            'pip install "opencv-python>=4.8,<5"')
-    dedektor = cv2.CascadeClassifier(yol)
-    if not dedektor.empty():
-        return dedektor
-    try:
-        with open(yol, "rb") as f:
-            xml = f.read().decode("utf-8")
-        fs = cv2.FileStorage(xml, cv2.FILE_STORAGE_READ | cv2.FILE_STORAGE_MEMORY)
-        dedektor = cv2.CascadeClassifier()
-        if fs.isOpened() and dedektor.read(fs.getFirstTopLevelNode()) and not dedektor.empty():
-            logger.info("Haar dosyası yoldan açılamadı; bellekten yüklendi.")
-            return dedektor
-    except Exception as e:
-        logger.warning("Bellekten Haar yükleme başarısız: %s", e)
-    raise RuntimeError(f"Yüz bulma dosyası yüklenemedi: {yol}")
 
 
 def guvenli_dosya_adi(metin: str) -> str:
