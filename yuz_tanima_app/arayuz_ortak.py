@@ -11,16 +11,16 @@ from .yuz_tanima import gorsel_oku
 # ══════════════════════════════════════════
 #  RENKLER
 # ══════════════════════════════════════════
-KOYU_BG   = "#111827"
-ANA_MAVI  = "#6D5AE6"
-SAYFA_BG  = "#F4F5F8"
-YAZI_KOYU = "#172033"
-YAZI_GRI  = "#687386"
-SINIR     = "#E3E7EF"
-YESIL     = "#159A79"
-KIRMIZI   = "#D84A5B"
-TURUNCU   = "#C88732"
-AVATAR_RENKLER = ["#6D5AE6","#168A78","#B77932","#C84B5D","#7156B8","#287C9C","#A64D79"]
+KOYU_BG   = "#24415B"
+ANA_MAVI  = "#527D9C"
+SAYFA_BG  = "transparent"
+YAZI_KOYU = "#20364B"
+YAZI_GRI  = "#60758A"
+SINIR     = "#D5E0E9"
+YESIL     = "#278A78"
+KIRMIZI   = "#CC6670"
+TURUNCU   = "#B67A3F"
+AVATAR_RENKLER = ["#527D9C","#278A78","#B67A3F","#CC6670","#657FA5","#438DA1","#A66E8B"]
 
 # ══════════════════════════════════════════
 #  YARDIMCI FONKSİYONLAR
@@ -46,12 +46,12 @@ def pixmap_yukle(yol):
 
 def kart_frame(parent=None, radius=12):
     f = QFrame(parent)
-    f.setStyleSheet(f"background: #FFFFFF; border-radius: {radius}px; border: 1px solid {SINIR};")
+    f.setStyleSheet(f"background: rgba(250,253,255,210); border-radius: {radius}px; border: 1px solid rgba(255,255,255,220);")
     return f
 
 def baslik_label(metin, boyut=22):
     l = QLabel(metin)
-    l.setStyleSheet(f"font-size:{boyut}px;font-weight:bold;color:{YAZI_KOYU};"
+    l.setStyleSheet(f"font-size:{boyut}px;font-weight:500;color:{YAZI_KOYU};"
                     f"font-family:'Segoe UI';background:transparent;border:none;")
     return l
 
@@ -62,22 +62,22 @@ def alt_baslik_label(metin):
     return l
 
 def input_stili():
-    return (f"QLineEdit{{border:1px solid {SINIR};border-radius:9px;padding:0 12px;"
-            f"font-size:13px;color:{YAZI_KOYU};background:#FFFFFF;}}"
+    return (f"QLineEdit{{border:1px solid {SINIR};border-radius:11px;padding:0 12px;"
+            f"font-size:13px;color:{YAZI_KOYU};background:rgba(255,255,255,210);}}"
             f"QLineEdit:focus{{border-color:{ANA_MAVI};}}")
 
 def combobox_stili():
-    return (f"QComboBox{{border:1px solid {SINIR};border-radius:9px;padding:0 12px;"
-            f"font-size:13px;color:{YAZI_KOYU};background:white;}}"
+    return (f"QComboBox{{border:1px solid {SINIR};border-radius:11px;padding:0 12px;"
+            f"font-size:13px;color:{YAZI_KOYU};background:rgba(255,255,255,210);}}"
             f"QComboBox:focus{{border-color:{ANA_MAVI};}}"
             f"QComboBox::drop-down{{border:none;width:24px;}}")
 
 def mavi_btn(metin, yukseklik=42):
     b = QPushButton(metin); b.setFixedHeight(yukseklik); b.setCursor(Qt.PointingHandCursor)
     b.setStyleSheet(f"QPushButton{{background:{ANA_MAVI};color:white;border:none;"
-                    f"border-radius:8px;font-size:13px;font-weight:bold;}}"
-                    f"QPushButton:hover{{background:#3a30a8;}}"
-                    f"QPushButton:pressed{{background:#2d2580;}}")
+                    f"border-radius:10px;font-size:13px;font-weight:500;}}"
+                    f"QPushButton:hover{{background:#416B8A;}}"
+                    f"QPushButton:pressed{{background:#345A77;}}")
     return b
 
 def avatar_widget(initials, renk="#4A3FC7", boyut=36):
@@ -116,18 +116,18 @@ class YetkisizUyariDiyalog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("⚠️ YETKİSİZ ERİŞİM!")
         self.setFixedSize(420, 500)
-        self.setStyleSheet("background:#fff1f2;")
+        self.setStyleSheet("background:#F9ECEE;")
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         lay = QVBoxLayout(self); lay.setContentsMargins(24,24,24,24); lay.setSpacing(16)
 
         uyari = QLabel("⚠️  YETKİSİZ ERİŞİM TESPİT EDİLDİ!")
         uyari.setAlignment(Qt.AlignCenter)
-        uyari.setStyleSheet("font-size:18px;font-weight:bold;color:#dc2626;background:transparent;border:none;")
+        uyari.setStyleSheet("font-size:18px;font-weight:500;color:#A94F5A;background:transparent;border:none;")
         lay.addWidget(uyari)
 
         alt = QLabel(f"Saat: {saat_str}\nTanımlanamayan kişi tespit edildi!")
         alt.setAlignment(Qt.AlignCenter)
-        alt.setStyleSheet("font-size:13px;color:#7f1d1d;border:none;background:transparent;")
+        alt.setStyleSheet("font-size:13px;color:#6E4B51;border:none;background:transparent;")
         lay.addWidget(alt)
 
         cerceve = QFrame(); cerceve.setFixedSize(340,280)
@@ -146,8 +146,8 @@ class YetkisizUyariDiyalog(QDialog):
         lay.addLayout(h)
 
         kapat = QPushButton("✓  Anladım, Kapat"); kapat.setFixedHeight(44); kapat.setCursor(Qt.PointingHandCursor)
-        kapat.setStyleSheet("QPushButton{background:#dc2626;color:white;border:none;border-radius:10px;font-size:14px;font-weight:bold;}"
-                            "QPushButton:hover{background:#b91c1c;}")
+        kapat.setStyleSheet("QPushButton{background:#B95B65;color:white;border:none;border-radius:11px;font-size:14px;font-weight:500;}"
+                            "QPushButton:hover{background:#A64C56;}")
         kapat.clicked.connect(self.accept); lay.addWidget(kapat)
 
 # ══════════════════════════════════════════
@@ -157,7 +157,7 @@ class FotoDiyalog(QDialog):
     def __init__(self, ad, foto_yol, parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"{ad} — Fotoğraf"); self.setFixedSize(420,480)
-        self.setStyleSheet(f"background:{SAYFA_BG};")
+        self.setStyleSheet("background:#D9E8F3;")
         lay = QVBoxLayout(self); lay.setContentsMargins(24,24,24,24); lay.setSpacing(16)
         b = baslik_label(ad, 16); b.setAlignment(Qt.AlignCenter); lay.addWidget(b)
         cerceve = QFrame(); cerceve.setFixedSize(340,340)

@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 class Dashboard(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Aegis | Güvenlik Operasyonları")
+        self.setWindowTitle("Güvenlik Operasyonları")
         self.setMinimumSize(1200, 750)
-        self.setFont(QFont("Segoe UI", 10))
-        self.setStyleSheet(f"background:{SAYFA_BG}; QToolTip{{background:#111827;color:#fff;border:1px solid #344055;padding:6px 8px;border-radius:5px;}} QScrollBar:vertical{{background:transparent;width:9px;margin:2px;}} QScrollBar::handle:vertical{{background:#CBD1DD;border-radius:4px;min-height:28px;}} QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical{{height:0;}}")
+        self.setFont(QFont("Segoe UI", 10, QFont.Normal))
+        self.setStyleSheet("QMainWindow{background:#D9E8F3;} QToolTip{background:#29445C;color:#FFFFFF;border:1px solid #86A8C1;padding:6px 8px;border-radius:7px;} QScrollBar:vertical{background:transparent;width:9px;margin:2px;} QScrollBar::handle:vertical{background:#9FB8CA;border-radius:4px;min-height:28px;} QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical{height:0;}")
 
         self._kamera_thread = None
         self._takili_threadler = []     # zamanında durmayan thread'ler (GC'den korunur)
@@ -32,11 +32,13 @@ class Dashboard(QMainWindow):
         # Başarısızlık _baslangic_kontrolleri içinde kullanıcıya bildirilir.
         yuz_tanima.deepface_yukle()
         merkez = QWidget()
+        merkez.setObjectName("appCanvas")
+        merkez.setStyleSheet("QWidget#appCanvas{background:qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #D9E8F3,stop:0.52 #BBD3E3,stop:1 #E5EEF3);}")
         self.setCentralWidget(merkez)
         ana = QHBoxLayout(merkez); ana.setContentsMargins(0,0,0,0); ana.setSpacing(0)
         ana.addWidget(self._sol_menu())
 
-        self.stack = QStackedWidget(); self.stack.setStyleSheet(f"background:{SAYFA_BG};")
+        self.stack = QStackedWidget(); self.stack.setStyleSheet("background:transparent;border:0;")
         ana.addWidget(self.stack)
 
         self.stack.addWidget(self._dashboard_sayfasi())    # 0
@@ -59,30 +61,30 @@ class Dashboard(QMainWindow):
     #  SOL MENÜ
     # ──────────────────────────────────────
     def _sol_menu(self):
-        w = QWidget(); w.setFixedWidth(242); w.setStyleSheet(f"background:{KOYU_BG};")
+        w = QWidget(); w.setFixedWidth(242); w.setStyleSheet("background:rgba(31,58,79,240);border-top-right-radius:20px;border-bottom-right-radius:20px;")
         lay = QVBoxLayout(w); lay.setContentsMargins(18,25,18,20); lay.setSpacing(4)
 
-        logo = QLabel("AEGIS  /  SECURITY")
-        logo.setStyleSheet("color:white;font-size:14px;font-weight:700;font-family:'Segoe UI';border:none;padding-bottom:4px;letter-spacing:1px;")
+        logo = QLabel("Güvenlik Merkezi")
+        logo.setStyleSheet("color:#F6FAFD;font-size:16px;font-weight:500;font-family:'Segoe UI';border:none;padding-bottom:4px;")
         lay.addWidget(logo)
-        alt = QLabel("GÜVENLİK OPERASYON MERKEZİ")
-        alt.setStyleSheet("color:rgba(255,255,255,0.4);font-size:11px;font-family:'Segoe UI';border:none;padding-bottom:4px;")
+        alt = QLabel("ERİŞİM VE İZLEME")
+        alt.setStyleSheet("color:rgba(232,242,249,158);font-size:10px;font-family:'Segoe UI';border:none;padding-bottom:4px;letter-spacing:1px;")
         lay.addWidget(alt)
 
         br = QHBoxLayout()
-        bl = QLabel("🔔  Uyarılar"); bl.setStyleSheet("color:rgba(255,255,255,0.5);font-size:11px;border:none;")
+        bl = QLabel("Uyarılar"); bl.setStyleSheet("color:rgba(241,247,251,184);font-size:11px;border:none;")
         br.addWidget(bl); br.addStretch()
         self.rozet = QLabel("0"); self.rozet.setFixedSize(20,20); self.rozet.setAlignment(Qt.AlignCenter)
-        self.rozet.setStyleSheet("background:#dc2626;color:white;border-radius:10px;font-size:11px;font-weight:bold;border:none;")
+        self.rozet.setStyleSheet("background:#C86770;color:white;border-radius:10px;font-size:11px;font-weight:500;border:none;")
         self.rozet.hide(); br.addWidget(self.rozet); lay.addLayout(br)
 
         self._db_uyari = QLabel("⚠  Veritabanı bağlantısı yok")
         self._db_uyari.setWordWrap(True)
-        self._db_uyari.setStyleSheet("background:#7f1d1d;color:white;border-radius:6px;padding:6px 8px;font-size:11px;font-weight:bold;")
+        self._db_uyari.setStyleSheet("background:#A94F5A;color:white;border-radius:8px;padding:7px 9px;font-size:11px;font-weight:500;")
         self._db_uyari.hide(); lay.addWidget(self._db_uyari)
 
         sep = QFrame(); sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("color:rgba(255,255,255,0.12);margin:8px 0;"); lay.addWidget(sep)
+        sep.setStyleSheet("color:rgba(255,255,255,31);margin:8px 0;"); lay.addWidget(sep)
 
         self._menu_btns = []
         for ikon, isim, idx in [("01","Ana Sayfa",0),("02","Yüz Kaydı",1),("03","Kullanıcı Listesi",2),("04","Canlı İzleme",3),("05","Geçmiş Kayıtları",4)]:
@@ -93,20 +95,20 @@ class Dashboard(QMainWindow):
 
         lay.addStretch()
         sep2 = QFrame(); sep2.setFrameShape(QFrame.HLine)
-        sep2.setStyleSheet("color:rgba(255,255,255,0.12);margin-bottom:8px;"); lay.addWidget(sep2)
+        sep2.setStyleSheet("color:rgba(255,255,255,31);margin-bottom:8px;"); lay.addWidget(sep2)
 
         cikis = QPushButton("  Oturumu Kapat"); cikis.setFixedHeight(44); cikis.setCursor(Qt.PointingHandCursor)
-        cikis.setStyleSheet("QPushButton{background:transparent;color:#ff4d4d;border:1px solid rgba(255,77,77,0.35);border-radius:8px;font-size:13px;font-family:'Segoe UI';text-align:left;padding-left:8px;}"
-                            "QPushButton:hover{background:rgba(255,77,77,0.12);}")
+        cikis.setStyleSheet("QPushButton{background:rgba(255,255,255,10);color:#F0C6C9;border:1px solid rgba(240,198,201,71);border-radius:10px;font-size:13px;font-family:'Segoe UI';text-align:left;padding-left:8px;}"
+                            "QPushButton:hover{background:rgba(255,255,255,26);}")
         cikis.clicked.connect(self._cikis); lay.addWidget(cikis)
         self._menu_btns[0].setStyleSheet(self._menu_stili(True))
         return w
 
     def _menu_stili(self, aktif):
         if aktif:
-            return f"QPushButton{{background:#28243E;color:white;border:1px solid #3B3559;border-left:3px solid {ANA_MAVI};border-radius:8px;font-size:13px;font-weight:600;font-family:'Segoe UI';text-align:left;padding-left:8px;}}"
-        return ("QPushButton{background:transparent;color:#AAB2C2;border:1px solid transparent;border-radius:8px;font-size:13px;font-family:'Segoe UI';text-align:left;padding-left:8px;}"
-                "QPushButton:hover{background:#1D2636;color:white;border-color:#2A3548;}")
+            return "QPushButton{background:rgba(224,239,248,46);color:#FFFFFF;border:1px solid rgba(255,255,255,46);border-left:3px solid #B5D6EA;border-radius:10px;font-size:13px;font-weight:500;font-family:'Segoe UI';text-align:left;padding-left:8px;}"
+        return ("QPushButton{background:transparent;color:rgba(238,246,251,199);border:1px solid transparent;border-radius:10px;font-size:13px;font-family:'Segoe UI';text-align:left;padding-left:8px;}"
+                "QPushButton:hover{background:rgba(255,255,255,23);color:white;border-color:rgba(255,255,255,26);}")
 
     def _git(self, idx):
         for i, b in enumerate(self._menu_btns): b.setStyleSheet(self._menu_stili(i == idx))
@@ -228,23 +230,23 @@ class Dashboard(QMainWindow):
     def _kamera_ui_ayarla(self, aktif: bool):
         if aktif:
             self.kamera_ac_btn.setText("⏹  Kamerayı Durdur")
-            self.kamera_ac_btn.setStyleSheet("QPushButton{background:#dc2626;color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;}QPushButton:hover{background:#b91c1c;}")
+            self.kamera_ac_btn.setStyleSheet("QPushButton{background:#B95B65;color:white;border:none;border-radius:10px;font-size:13px;font-weight:500;}QPushButton:hover{background:#A64C56;}")
             self.kamera_label.setText("")
             self.kamera_label.setStyleSheet("background:#0f172a;border:none;border-radius:8px;")
             self._fps_dot.setStyleSheet(f"color:{YESIL};font-size:12px;border:none;")
             self._fps_lbl.setText("Aktif  •  en çok ~30 FPS")
             self._kamera_durum_lbl.setText("Aktif Kamera")
-            self._kamera_durum_lbl.setStyleSheet(f"background:{ANA_MAVI};color:white;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:bold;border:none;")
+            self._kamera_durum_lbl.setStyleSheet(f"background:{ANA_MAVI};color:white;border-radius:9px;padding:4px 12px;font-size:11px;font-weight:500;border:none;")
         else:
             self.kamera_ac_btn.setText("▶  Kamerayı Başlat")
-            self.kamera_ac_btn.setStyleSheet(f"QPushButton{{background:{ANA_MAVI};color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;}}QPushButton:hover{{background:#3a30a8;}}")
+            self.kamera_ac_btn.setStyleSheet(f"QPushButton{{background:{ANA_MAVI};color:white;border:none;border-radius:10px;font-size:13px;font-weight:500;}}QPushButton:hover{{background:#416B8A;}}")
             self.kamera_label.clear()
             self.kamera_label.setText("📷\n\nKamera 1 — Ana Giriş\n\nKamerayı başlatmak için\naşağıdaki butona basın")
             self.kamera_label.setStyleSheet("background:#0f172a;color:#6b7280;font-size:14px;border:none;margin:0 14px;")
             self._fps_dot.setStyleSheet(f"color:{YAZI_GRI};font-size:12px;border:none;")
             self._fps_lbl.setText("Pasif  •  —")
             self._kamera_durum_lbl.setText("Pasif Kamera")
-            self._kamera_durum_lbl.setStyleSheet("background:#6b7280;color:white;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:bold;border:none;")
+            self._kamera_durum_lbl.setStyleSheet("background:#70899B;color:white;border-radius:9px;padding:4px 12px;font-size:11px;font-weight:500;border:none;")
         self._dashboard_yenile()
         self._canli_paneli_yenile()
 
@@ -299,7 +301,7 @@ class Dashboard(QMainWindow):
     #  YARDIMCILAR
     # ──────────────────────────────────────
     def _sayfa_wrap(self, baslik_txt, alt_txt):
-        w = QWidget(); w.setStyleSheet(f"background:{SAYFA_BG};")
+        w = QWidget(); w.setStyleSheet("background:transparent;")
         lay = QVBoxLayout(w); lay.setContentsMargins(34,30,34,30); lay.setSpacing(0)
         lay.addWidget(baslik_label(baslik_txt))
         sub = alt_baslik_label(alt_txt); sub.setContentsMargins(0,4,0,20); lay.addWidget(sub)
@@ -314,7 +316,7 @@ class Dashboard(QMainWindow):
         ust.addWidget(ik); ust.addStretch()
         tr = QLabel("↗"); tr.setStyleSheet(f"font-size:18px;color:{fg};border:none;")
         ust.addWidget(tr); fl.addLayout(ust); fl.addSpacing(8)
-        n = QLabel(str(sayi)); n.setStyleSheet(f"font-size:28px;font-weight:bold;color:{YAZI_KOYU};font-family:'Segoe UI';border:none;")
+        n = QLabel(str(sayi)); n.setStyleSheet(f"font-size:28px;font-weight:500;color:{YAZI_KOYU};font-family:'Segoe UI';border:none;")
         fl.addWidget(n)
         e = QLabel(etiket); e.setStyleSheet(f"font-size:12px;color:{YAZI_GRI};border:none;")
         fl.addWidget(e)
@@ -324,10 +326,10 @@ class Dashboard(QMainWindow):
     #  SAYFA 0 — DASHBOARD
     # ══════════════════════════════════════
     def _dashboard_sayfasi(self):
-        self._dash_w = QWidget(); self._dash_w.setStyleSheet(f"background:{SAYFA_BG};")
+        self._dash_w = QWidget(); self._dash_w.setStyleSheet("background:transparent;")
         ml = QVBoxLayout(self._dash_w); ml.setContentsMargins(34,30,34,30); ml.setSpacing(0)
-        ml.addWidget(baslik_label("Ana Dashboard"))
-        sub = alt_baslik_label("Yüz tanıma sistemi genel görünüm ve istatistikler"); sub.setContentsMargins(0,4,0,20); ml.addWidget(sub)
+        ml.addWidget(baslik_label("Genel Bakış"))
+        sub = alt_baslik_label("Güvenlik sisteminizin güncel durumu ve erişim kayıtları"); sub.setContentsMargins(0,4,0,20); ml.addWidget(sub)
         self._dash_icerik = QWidget(); self._dash_icerik_lay = QVBoxLayout(self._dash_icerik); self._dash_icerik_lay.setSpacing(16)
         ml.addWidget(self._dash_icerik); ml.addStretch()
         return self._dash_w
@@ -362,23 +364,23 @@ class Dashboard(QMainWindow):
 
         uyarilar = self._db("SELECT foto_yolu,tarih,saat FROM yetkisiz_kayitlar WHERE tarih=%s ORDER BY saat DESC LIMIT 5",(bugun,))
         if uyarilar:
-            uk = QFrame(); uk.setStyleSheet("background:#fff1f2;border-radius:12px;border:1.5px solid #fca5a5;")
+            uk = QFrame(); uk.setStyleSheet("background:rgba(255,246,247,235);border-radius:16px;border:1px solid #E9C5C9;")
             ukl = QVBoxLayout(uk); ukl.setContentsMargins(18,14,18,14); ukl.setSpacing(8)
             ur = QHBoxLayout()
-            bu = QLabel("⚠️  Yetkisiz Erişim Uyarıları"); bu.setStyleSheet("font-size:14px;font-weight:bold;color:#dc2626;border:none;")
+            bu = QLabel("Yetkisiz Erişim Uyarıları"); bu.setStyleSheet("font-size:14px;font-weight:500;color:#A94F5A;border:none;")
             ur.addWidget(bu); ur.addStretch()
-            sb = QLabel(f"{len(uyarilar)} Uyarı"); sb.setStyleSheet("background:#dc2626;color:white;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:bold;border:none;")
+            sb = QLabel(f"{len(uyarilar)} Uyarı"); sb.setStyleSheet("background:#C86770;color:white;border-radius:9px;padding:4px 10px;font-size:11px;font-weight:500;border:none;")
             ur.addWidget(sb); ukl.addLayout(ur)
             for foto, tarih, saat in uyarilar:
                 sr = QHBoxLayout(); sr.setSpacing(12)
-                zl = QLabel(str(saat)[:8]); zl.setStyleSheet("font-size:12px;color:#dc2626;font-weight:bold;border:none;min-width:65px;")
+                zl = QLabel(str(saat)[:8]); zl.setStyleSheet("font-size:12px;color:#A94F5A;font-weight:500;border:none;min-width:65px;")
                 sr.addWidget(zl)
-                ml2 = QLabel("🔴  Tanımlanamayan kişi tespit edildi — Kamera 1"); ml2.setStyleSheet("font-size:13px;color:#7f1d1d;border:none;")
+                ml2 = QLabel("Tanımlanamayan kişi tespit edildi — Kamera 1"); ml2.setStyleSheet("font-size:13px;color:#6E4B51;border:none;")
                 sr.addWidget(ml2); sr.addStretch()
                 fb = QPushButton("Fotoğrafı Gör"); fb.setFixedHeight(28); fb.setCursor(Qt.PointingHandCursor)
-                fb.setStyleSheet("QPushButton{background:#dc2626;color:white;border:none;border-radius:6px;font-size:11px;padding:0 10px;}QPushButton:hover{background:#b91c1c;}")
+                fb.setStyleSheet("QPushButton{background:#B95B65;color:white;border:none;border-radius:9px;font-size:11px;padding:0 12px;}QPushButton:hover{background:#A64C56;}")
                 fb.clicked.connect(lambda _,f=foto or "",s=str(saat)[:8]: self._yetkisiz_foto_goster(f,s))
-                sr.addWidget(fb); ukl.addLayout(sr); ukl.addWidget(sep_cizgi("#fca5a5"))
+                sr.addWidget(fb); ukl.addLayout(sr); ukl.addWidget(sep_cizgi("#E9C5C9"))
             self.rozet.setText(str(len(uyarilar))); self.rozet.show()
             self._dash_icerik_lay.addWidget(uk)
 
@@ -398,7 +400,7 @@ class Dashboard(QMainWindow):
             ic.setStyleSheet(f"background:{'#dcfce7' if ok else '#fee2e2'};border-radius:14px;color:{'#15803d' if ok else '#dc2626'};font-size:13px;border:none;")
             r.addWidget(ic)
             col = QVBoxLayout(); col.setSpacing(1)
-            al = QLabel(isim); al.setStyleSheet(f"font-size:12px;font-weight:bold;color:{YAZI_KOYU};border:none;")
+            al = QLabel(isim); al.setStyleSheet(f"font-size:12px;font-weight:500;color:{YAZI_KOYU};border:none;")
             cl2 = QLabel(durum); cl2.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;")
             col.addWidget(al); col.addWidget(cl2); r.addLayout(col); r.addStretch()
             sl2 = QLabel(str(saat)[:8] if saat else "-"); sl2.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;"); r.addWidget(sl2)
@@ -416,7 +418,7 @@ class Dashboard(QMainWindow):
             ("Bilinmeyen", str(y_say), KIRMIZI)
         ]:
             r = QHBoxLayout(); e = QLabel(et); e.setStyleSheet(f"font-size:13px;color:{YAZI_GRI};border:none;"); r.addWidget(e); r.addStretch()
-            d = QLabel(dg); d.setStyleSheet(f"font-size:13px;font-weight:bold;color:{rk};border:none;"); r.addWidget(d)
+            d = QLabel(dg); d.setStyleSheet(f"font-size:13px;font-weight:500;color:{rk};border:none;"); r.addWidget(d)
             sgl.addLayout(r); sgl.addWidget(sep_cizgi())
         arow.addWidget(sag, 2)
         self._dash_icerik_lay.addLayout(arow)
@@ -548,10 +550,10 @@ class Dashboard(QMainWindow):
         for i, mod in enumerate([QHeaderView.Stretch,QHeaderView.ResizeToContents,QHeaderView.ResizeToContents,QHeaderView.ResizeToContents,QHeaderView.ResizeToContents,QHeaderView.ResizeToContents,QHeaderView.ResizeToContents]):
             hh.setSectionResizeMode(i, mod)
         self.kullanici_tablosu.setStyleSheet(f"""
-            QTableWidget{{background:white;border-radius:12px;border:1px solid {SINIR};gridline-color:#f3f4f6;font-family:'Segoe UI';}}
-            QHeaderView::section{{background:#f9fafb;padding:10px 8px;font-size:11px;font-weight:bold;color:{YAZI_GRI};border:none;border-bottom:1px solid {SINIR};}}
+            QTableWidget{{background:rgba(250,253,255,240);border-radius:14px;border:1px solid rgba(255,255,255,220);gridline-color:#E8EFF4;font-family:'Segoe UI';}}
+            QHeaderView::section{{background:rgba(231,241,248,245);padding:10px 8px;font-size:11px;font-weight:500;color:{YAZI_GRI};border:none;border-bottom:1px solid {SINIR};}}
             QTableWidget::item{{padding:8px;font-size:13px;color:{YAZI_KOYU};}}
-            QTableWidget::item:selected{{background:#ede9fe;color:{ANA_MAVI};}}""")
+            QTableWidget::item:selected{{background:#D8E7F1;color:{YAZI_KOYU};}}""")
         self.kullanici_tablosu.setEditTriggers(QTableWidget.NoEditTriggers)
         self.kullanici_tablosu.setSelectionBehavior(QTableWidget.SelectRows)
         self.kullanici_tablosu.verticalHeader().setVisible(False)
@@ -591,14 +593,14 @@ class Dashboard(QMainWindow):
             kl = QHBoxLayout(kw); kl.setContentsMargins(8,4,8,4); kl.setSpacing(10)
             kl.addWidget(avatar_widget(get_initials(ad),AVATAR_RENKLER[i%len(AVATAR_RENKLER)],34))
             ic = QVBoxLayout(); ic.setSpacing(0)
-            nl = QLabel(ad); nl.setStyleSheet(f"font-size:13px;font-weight:bold;color:{YAZI_KOYU};border:none;")
+            nl = QLabel(ad); nl.setStyleSheet(f"font-size:13px;font-weight:500;color:{YAZI_KOYU};border:none;")
             ml2 = QLabel(eposta); ml2.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;")
             ic.addWidget(nl); ic.addWidget(ml2); kl.addLayout(ic); kl.addStretch(); t.setCellWidget(i,0,kw)
             for col, val in [(1,kid),(2,dep),(3,tel),(4,son)]:
                 item = QTableWidgetItem(val); item.setTextAlignment(Qt.AlignCenter); t.setItem(i,col,item)
             dw = QWidget(); dw.setStyleSheet("background:transparent;")
             dl = QHBoxLayout(dw); dl.setContentsMargins(8,0,8,0); dl.setAlignment(Qt.AlignCenter)
-            dlbl = QLabel(durum); dlbl.setStyleSheet(("background:#dcfce7;color:#15803d;" if durum=="Aktif" else "background:#fee2e2;color:#dc2626;")+"border-radius:10px;padding:3px 10px;font-size:11px;font-weight:bold;")
+            dlbl = QLabel(durum); dlbl.setStyleSheet(("background:#E4F2ED;color:#277763;" if durum=="Aktif" else "background:#F8E9EA;color:#A94F5A;")+"border-radius:10px;padding:3px 10px;font-size:11px;font-weight:500;")
             dl.addWidget(dlbl); t.setCellWidget(i,5,dw)
             iw = QWidget(); iw.setStyleSheet("background:transparent;")
             il = QHBoxLayout(iw); il.setContentsMargins(6,4,6,4); il.setSpacing(6); il.setAlignment(Qt.AlignCenter)
@@ -672,10 +674,10 @@ class Dashboard(QMainWindow):
 
         kk_frame = kart_frame(); kk = QVBoxLayout(kk_frame); kk.setContentsMargins(14,12,14,12); kk.setSpacing(8)
         ust = QHBoxLayout(); ust.setSpacing(10)
-        canli_c = QFrame(); canli_c.setStyleSheet("background:rgba(239,68,68,0.12);border-radius:8px;border:1px solid rgba(239,68,68,0.35);")
+        canli_c = QFrame(); canli_c.setStyleSheet("background:rgba(239,68,68,31);border-radius:10px;border:1px solid rgba(239,68,68,89);")
         ccl = QHBoxLayout(canli_c); ccl.setContentsMargins(10,5,10,5); ccl.setSpacing(6)
         cdot = QLabel("●"); cdot.setStyleSheet("color:#ef4444;font-size:10px;border:none;")
-        ctxt = QLabel("CANLI"); ctxt.setStyleSheet("color:#ef4444;font-size:12px;font-weight:bold;font-family:'Segoe UI';border:none;letter-spacing:1px;")
+        ctxt = QLabel("CANLI"); ctxt.setStyleSheet("color:#B95B65;font-size:12px;font-weight:500;font-family:'Segoe UI';border:none;letter-spacing:1px;")
         ccl.addWidget(cdot); ccl.addWidget(ctxt); ust.addWidget(canli_c)
         self._saat_lbl = QLabel("--:--:--"); self._saat_lbl.setStyleSheet(f"font-size:13px;color:{YAZI_GRI};border:none;"); ust.addWidget(self._saat_lbl); ust.addStretch()
         kk.addLayout(ust)
@@ -693,10 +695,10 @@ class Dashboard(QMainWindow):
 
         btn_row = QHBoxLayout(); btn_row.setSpacing(10)
         kayit_btn = QPushButton("● Kayıt Başlat"); kayit_btn.setFixedHeight(38); kayit_btn.setCursor(Qt.PointingHandCursor)
-        kayit_btn.setStyleSheet("QPushButton{background:#dc2626;color:white;border:none;border-radius:8px;font-size:13px;font-weight:bold;padding:0 16px;}QPushButton:hover{background:#b91c1c;}")
+        kayit_btn.setStyleSheet("QPushButton{background:#B95B65;color:white;border:none;border-radius:10px;font-size:13px;font-weight:500;padding:0 16px;}QPushButton:hover{background:#A64C56;}")
         btn_row.addWidget(kayit_btn)
         ekran_btn = QPushButton("📸  Ekran Görüntüsü"); ekran_btn.setFixedHeight(38); ekran_btn.setCursor(Qt.PointingHandCursor)
-        ekran_btn.setStyleSheet(f"QPushButton{{background:white;color:{YAZI_KOYU};border:1px solid {SINIR};border-radius:8px;font-size:13px;padding:0 16px;}}QPushButton:hover{{background:#f9fafb;}}")
+        ekran_btn.setStyleSheet(f"QPushButton{{background:rgba(250,253,255,210);color:{YAZI_KOYU};border:1px solid rgba(255,255,255,220);border-radius:10px;font-size:13px;padding:0 16px;}}QPushButton:hover{{background:#FFFFFF;}}")
         ekran_btn.clicked.connect(self._ekran_goruntusu); btn_row.addWidget(ekran_btn)
         btn_row.addStretch()
 
@@ -707,11 +709,11 @@ class Dashboard(QMainWindow):
         sol.addLayout(btn_row)
 
         alt_kart = kart_frame(); alt_kart.setFixedHeight(110)
-        alt_kart.setStyleSheet(f"background:white;border-radius:10px;border:2px solid {ANA_MAVI};")
+        alt_kart.setStyleSheet("background:rgba(249,252,254,214);border-radius:14px;border:1px solid rgba(255,255,255,235);")
         ak = QHBoxLayout(alt_kart); ak.setContentsMargins(14,10,14,10); ak.setSpacing(14)
         mini = QLabel("📷"); mini.setFixedSize(100,70); mini.setAlignment(Qt.AlignCenter); mini.setStyleSheet("background:#0f172a;border-radius:6px;border:none;font-size:18px;"); ak.addWidget(mini)
         bilgi = QVBoxLayout(); bilgi.setSpacing(4)
-        ki = QLabel("Kamera 1"); ki.setStyleSheet(f"font-size:14px;font-weight:bold;color:{YAZI_KOYU};border:none;")
+        ki = QLabel("Kamera 1"); ki.setStyleSheet(f"font-size:14px;font-weight:500;color:{YAZI_KOYU};border:none;")
         ky = QLabel("Ana Giriş"); ky.setStyleSheet(f"font-size:12px;color:{YAZI_GRI};border:none;")
         bilgi.addWidget(ki); bilgi.addWidget(ky)
         fps_row = QHBoxLayout(); fps_row.setSpacing(6)
@@ -720,7 +722,7 @@ class Dashboard(QMainWindow):
         fps_row.addWidget(self._fps_dot); fps_row.addWidget(self._fps_lbl); fps_row.addStretch(); bilgi.addLayout(fps_row)
         ak.addLayout(bilgi); ak.addStretch()
         self._kamera_durum_lbl = QLabel("Pasif Kamera")
-        self._kamera_durum_lbl.setStyleSheet("background:#6b7280;color:white;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:bold;border:none;")
+        self._kamera_durum_lbl.setStyleSheet("background:#70899B;color:white;border-radius:9px;padding:4px 12px;font-size:11px;font-weight:500;border:none;")
         ak.addWidget(self._kamera_durum_lbl)
         sol.addWidget(alt_kart); icerik.addLayout(sol,3)
 
@@ -748,7 +750,7 @@ class Dashboard(QMainWindow):
         bas=round(b_s/t_t*100,1) if t_t>0 else 0
         for et,dg,rk in [("Aktif Kamera","1" if self._kamera_aktif_mi() else "0",ANA_MAVI),("Bugünkü Tespit",str(t_t),YAZI_KOYU),("Başarı Oranı",f"%{bas}",TURUNCU),("Bilinmeyen",str(y_s),KIRMIZI)]:
             r = QHBoxLayout(); e=QLabel(et); e.setStyleSheet(f"font-size:13px;color:{YAZI_GRI};border:none;"); r.addWidget(e); r.addStretch()
-            d=QLabel(dg); d.setStyleSheet(f"font-size:14px;font-weight:bold;color:{rk};border:none;"); r.addWidget(d); ikl.addLayout(r); ikl.addWidget(sep_cizgi())
+            d=QLabel(dg); d.setStyleSheet(f"font-size:14px;font-weight:500;color:{rk};border:none;"); r.addWidget(d); ikl.addLayout(r); ikl.addWidget(sep_cizgi())
         sag.addWidget(ist)
 
         tp = kart_frame(); tkl = QVBoxLayout(tp); tkl.setContentsMargins(18,16,18,16); tkl.setSpacing(0)
@@ -762,7 +764,7 @@ class Dashboard(QMainWindow):
             ic=QLabel("✓" if ok else "⚠"); ic.setFixedSize(26,26); ic.setAlignment(Qt.AlignCenter)
             ic.setStyleSheet(f"background:{'#dcfce7' if ok else '#fef3c7'};border-radius:13px;color:{'#15803d' if ok else '#d97706'};font-size:12px;border:none;"); r.addWidget(ic)
             col=QVBoxLayout(); col.setSpacing(1)
-            al=QLabel(isim); al.setStyleSheet(f"font-size:12px;font-weight:bold;color:{YAZI_KOYU};border:none;")
+            al=QLabel(isim); al.setStyleSheet(f"font-size:12px;font-weight:500;color:{YAZI_KOYU};border:none;")
             cl2=QLabel("Kamera 1"); cl2.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;")
             col.addWidget(al); col.addWidget(cl2); r.addLayout(col); r.addStretch()
             sl=QLabel(str(saat)[:8] if saat else "-"); sl.setAlignment(Qt.AlignRight); sl.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;"); r.addWidget(sl)
@@ -817,10 +819,10 @@ class Dashboard(QMainWindow):
         for i, mod in enumerate([QHeaderView.ResizeToContents,QHeaderView.Stretch,QHeaderView.ResizeToContents,QHeaderView.ResizeToContents,QHeaderView.ResizeToContents,QHeaderView.ResizeToContents,QHeaderView.ResizeToContents,QHeaderView.ResizeToContents]):
             hh.setSectionResizeMode(i,mod)
         self.gecmis_tablosu.setStyleSheet(f"""
-            QTableWidget{{background:white;border-radius:12px;border:1px solid {SINIR};gridline-color:#f3f4f6;font-family:'Segoe UI';}}
-            QHeaderView::section{{background:#f9fafb;padding:10px 8px;font-size:11px;font-weight:bold;color:{YAZI_GRI};border:none;border-bottom:1px solid {SINIR};}}
+            QTableWidget{{background:rgba(250,253,255,240);border-radius:14px;border:1px solid rgba(255,255,255,220);gridline-color:#E8EFF4;font-family:'Segoe UI';}}
+            QHeaderView::section{{background:rgba(231,241,248,245);padding:10px 8px;font-size:11px;font-weight:500;color:{YAZI_GRI};border:none;border-bottom:1px solid {SINIR};}}
             QTableWidget::item{{padding:6px 8px;font-size:13px;color:{YAZI_KOYU};}}
-            QTableWidget::item:selected{{background:#ede9fe;}}""")
+            QTableWidget::item:selected{{background:#D8E7F1;}}""")
         self.gecmis_tablosu.setEditTriggers(QTableWidget.NoEditTriggers)
         self.gecmis_tablosu.setSelectionBehavior(QTableWidget.SelectRows)
         self.gecmis_tablosu.verticalHeader().setVisible(False); self.gecmis_tablosu.setShowGrid(False)
@@ -864,7 +866,7 @@ class Dashboard(QMainWindow):
             kl.addWidget(QLabel(ad)); kl.itemAt(1).widget().setStyleSheet(f"font-size:13px;color:{YAZI_KOYU};border:none;"); kl.addStretch(); t.setCellWidget(i,1,kw)
             tw = QWidget(); tw.setStyleSheet("background:transparent;")
             tl = QHBoxLayout(tw); tl.setContentsMargins(6,0,6,0); tl.setAlignment(Qt.AlignCenter)
-            tlbl = QLabel(tip); tlbl.setStyleSheet({"Giriş":"background:#dcfce7;color:#15803d;","Çıkış":"background:#fef3c7;color:#d97706;","Bilinmeyen":"background:#fee2e2;color:#dc2626;"}.get(tip,"")+"border-radius:8px;padding:2px 8px;font-size:11px;font-weight:bold;")
+            tlbl = QLabel(tip); tlbl.setStyleSheet({"Giriş":"background:#E4F2ED;color:#277763;","Çıkış":"background:#F6EFE3;color:#A97638;","Bilinmeyen":"background:#F8E9EA;color:#A94F5A;"}.get(tip,"")+"border-radius:8px;padding:2px 8px;font-size:11px;font-weight:500;")
             tl.addWidget(tlbl); t.setCellWidget(i,2,tw)
             for col, val in [(3,tarih),(4,saat),(5,kamera),(6,guven)]:
                 item=QTableWidgetItem(val); item.setTextAlignment(Qt.AlignCenter); t.setItem(i,col,item)

@@ -10,7 +10,7 @@ import logging
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QMainWindow, QMessageBox, QLabel
+from PyQt5.QtWidgets import QMainWindow, QMessageBox
 from PyQt5.uic import loadUi
 
 from . import config
@@ -42,11 +42,10 @@ class LoginWindow(QMainWindow):
 
         # Keep the Designer object names and authentication flow intact while
         # presenting an enterprise-oriented composition.
-        self.setWindowTitle("Aegis | Güvenli Erişim")
+        self.setWindowTitle("Güvenli Erişim")
         self.setFixedSize(1100, 700)
         self.setStyleSheet("QMainWindow{background:#111827;} QStatusBar,QMenuBar{background:transparent;border:0;}")
 
-        logo = self._pixmap_yukle(config.LOGO_DOSYASI)
         # The supplied logo contains a visible stock watermark; avoid showing it.
         self.logoLabel.hide()
 
@@ -59,36 +58,31 @@ class LoginWindow(QMainWindow):
 
         self.sloganLabel.setGeometry(72, 190, 510, 210)
         self.sloganLabel.setText(
-            '<span style="font-size:12px;letter-spacing:3px;color:#D4C8FF;">AEGIS &nbsp; / &nbsp; SECURITY OPERATIONS</span>'
-            '<br><br><span style="font-size:38px;font-weight:600;color:#FFFFFF;">Güvenli erişim.<br>Kontrollü alan.</span>'
-            '<br><br><span style="font-size:15px;font-weight:400;color:#D6DCEE;">Yüz doğrulama ve erişim kayıtları<br>tek bir güvenli merkezde.</span>'
+            '<span style="font-size:38px;font-weight:500;color:#FFFFFF;">Güvenli erişim.<br>Tek merkezden kontrol.</span>'
+            '<br><br><span style="font-size:15px;font-weight:400;color:#E2EAF2;">Yüz doğrulama ve erişim kayıtları<br>bir arayüzde.</span>'
         )
         self.sloganLabel.setStyleSheet("background:transparent;border:0;font-family:'Segoe UI';")
         self.sloganLabel.raise_()
 
         self.loginFrame.setGeometry(665, 90, 365, 520)
-        self.loginFrame.setStyleSheet("QFrame#loginFrame{background:#FFFFFF;border:1px solid rgba(255,255,255,0.5);border-radius:18px;}")
+        self.loginFrame.setStyleSheet("QFrame#loginFrame{background:rgba(245,249,252,224);border:1px solid rgba(255,255,255,199);border-radius:22px;}")
         self.titlelabel.setGeometry(34, 72, 295, 48)
         self.titlelabel.setText("Yönetici girişi")
-        self.titlelabel.setStyleSheet("color:#172033;font-size:25px;font-weight:600;font-family:'Segoe UI';background:transparent;border:0;")
+        self.titlelabel.setStyleSheet("color:#20364B;font-size:25px;font-weight:500;font-family:'Segoe UI';background:transparent;border:0;")
         self.usernamelabel.setGeometry(34, 160, 295, 24)
         self.passwordLabel.setGeometry(34, 260, 295, 24)
         for label in (self.usernamelabel, self.passwordLabel):
-            label.setStyleSheet("color:#536075;font-size:12px;font-weight:600;font-family:'Segoe UI';background:transparent;border:0;padding:0;")
+            label.setStyleSheet("color:#60758A;font-size:12px;font-weight:500;font-family:'Segoe UI';background:transparent;border:0;padding:0;")
         self.usernamenput.setGeometry(34, 188, 297, 46)
         self.usernamenput.setPlaceholderText("Kullanıcı adınızı girin")
         self.passwordInput.setGeometry(34, 288, 297, 46)
         self.passwordInput.setPlaceholderText("Parolanızı girin")
-        field_style = "QLineEdit{background:#F7F8FA;color:#172033;border:1px solid #E2E6EE;border-radius:9px;padding:0 13px;font-size:13px;} QLineEdit:focus{background:#FFFFFF;border:1px solid #7564DF;}"
+        field_style = "QLineEdit{background:rgba(255,255,255,199);color:#20364B;border:1px solid #D5E0E9;border-radius:12px;padding:0 14px;font-size:13px;} QLineEdit:focus{background:#FFFFFF;border:1px solid #789DB8;}"
         self.usernamenput.setStyleSheet(field_style)
         self.passwordInput.setStyleSheet(field_style)
         self.loginButton.setGeometry(34, 370, 297, 48)
         self.loginButton.setText("Güvenli giriş   →")
-        self.loginButton.setStyleSheet("QPushButton{background:#6D5AE6;color:#FFFFFF;border:0;border-radius:9px;font-size:14px;font-weight:600;font-family:'Segoe UI';} QPushButton:hover{background:#5C49D1;} QPushButton:pressed{background:#4E3DB7;}")
-        guvenlik_notu = QLabel("YETKİLİ ERİŞİM  ·  TÜM OTURUMLAR KAYIT ALTINDADIR", self.loginFrame)
-        guvenlik_notu.setGeometry(30, 455, 305, 30)
-        guvenlik_notu.setAlignment(Qt.AlignCenter)
-        guvenlik_notu.setStyleSheet("color:#8B93A3;font-size:9px;letter-spacing:1px;font-family:'Segoe UI';background:transparent;border:0;")
+        self.loginButton.setStyleSheet("QPushButton{background:#507A99;color:#FFFFFF;border:0;border-radius:12px;font-size:14px;font-weight:500;font-family:'Segoe UI';} QPushButton:hover{background:#416B8A;} QPushButton:pressed{background:#345A77;}")
         self.loginFrame.raise_()
 
         self.loginButton.clicked.connect(self.giris_yap)
