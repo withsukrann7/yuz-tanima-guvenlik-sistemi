@@ -61,3 +61,31 @@ class YuzBulucu:
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+
+def yuz_kirp(goruntu_bgr, kutu, pay):
+    """Yüz kutusunu `pay` oranında genişletip BGR kırpım döndürür.
+
+    MediaPipe kutusu yüze yapışıktır; VGG-Face alın ve çene payı olan bir
+    kadraj bekler. Aynı fonksiyon hem kayıtlı fotoğrafa hem canlı kareye
+    uygulanır, böylece iki vektör aynı tür görüntüden çıkar.
+    Görüntü dışına taşan pay kesilir. Geçersiz kutuda None döner.
+    """
+    if goruntu_bgr is None or getattr(goruntu_bgr, "size", 0) == 0:
+        return None
+    if len(goruntu_bgr.shape) < 2:
+        return None
+    yukseklik, genislik = goruntu_bgr.shape[:2]
+    x, y, w, h = (int(kutu[0]), int(kutu[1]), int(kutu[2]), int(kutu[3]))
+    if w <= 0 or h <= 0:
+        return None
+    pay = max(0.0, float(pay))
+    mx = int(round(w * pay))
+    my = int(round(h * pay))
+    x1 = max(0, x - mx)
+    y1 = max(0, y - my)
+    x2 = min(genislik, x + w + mx)
+    y2 = min(yukseklik, y + h + my)
+    if x2 <= x1 or y2 <= y1:
+        return None
+    return goruntu_bgr[y1:y2, x1:x2].copy()
