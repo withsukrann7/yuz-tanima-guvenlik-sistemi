@@ -3,6 +3,7 @@
 Çalıştırmak için:  YUZ_TEST_DEEPFACE=1 pytest tests/test_deepface_opsiyonel.py
 Test yüzü olarak scikit-image'in paketli örnek portresi kullanılır (pip install scikit-image).
 """
+# pyright: reportMissingImports=false
 import os
 
 import cv2
@@ -50,6 +51,8 @@ def test_yetkili_yuz_taninir_ve_olay_uretir(kamera):
     # biraz farklı bir kırpma/ölçek: gerçek kameradaki varyasyonu taklit eder
     farkli = cv2.resize(yuz, None, fx=0.8, fy=0.8)
     th._analyze_async(farkli, tam.copy())
+    assert not yetkili and not yetkisiz          # tek örnek kapı açmaz
+    th._analyze_async(farkli, tam.copy())
     assert yetkili and yetkili[0][0] == "Eileen Collins" and not yetkisiz
     assert (config.GUVENLIK_LOG_DOSYASI).exists()
 
@@ -60,6 +63,8 @@ def test_yabanci_goruntu_bilinmeyen_ve_snapshot(kamera):
     th.yetkili_giris.connect(lambda ad, g: yetkili.append(ad))
     th.yetkisiz_giris.connect(lambda yol, s: yetkisiz.append(yol))
     gurultu = np.random.default_rng(1).integers(0, 255, (150, 150, 3), dtype=np.uint8)
+    th._analyze_async(gurultu, tam.copy())
+    assert not yetkili and not yetkisiz          # tek ret alarm değildir
     th._analyze_async(gurultu, tam.copy())
     assert not yetkili and len(yetkisiz) == 1
     assert os.path.exists(yetkisiz[0])
