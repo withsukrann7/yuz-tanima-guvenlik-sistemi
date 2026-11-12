@@ -226,7 +226,7 @@ def _deepface_esigi():
         return float(find_threshold(config.MODEL_ADI, config.MESAFE_METRIGI))
     except Exception:
         try:
-            from deepface.commons.distance import findThreshold
+            from deepface.commons.distance import findThreshold # type: ignore
             return float(findThreshold(config.MODEL_ADI, config.MESAFE_METRIGI))
         except Exception:
             return None
