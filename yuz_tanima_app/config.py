@@ -76,14 +76,19 @@ def yonetici_bilgileri():
     return os.getenv("YUZ_ADMIN_USER"), os.getenv("YUZ_ADMIN_PASSWORD")
 
 
-# ── Yüz tanıma / kamera sabitleri (özgün değerler korunmuştur) ─────────
+# ── Yüz tanıma / kamera sabitleri ───────────────────────────────────────
 BILDIRIM_BEKLEME_SN = 10          # aynı kişi için tekrar kayıt/bildirim aralığı
 MODEL_ADI           = "VGG-Face"
 MESAFE_METRIGI      = "cosine"
-# DeepFace verification uses OpenCV's detector internally. Live camera face
-# localization is handled separately by our MediaPipe Tasks detector in
-# kamera.py, avoiding DeepFace's legacy MediaPipe graph asset requirement.
-DEDEKTOR            = "opencv"
+# Canlı yüzü MediaPipe bulur; DeepFace'e giden görüntü zaten kırpılmış yüzdür.
+# "skip" ikinci bir Haar aramasını kapatır. O arama aynı yüzde bazen başka bir
+# bölge, bazen kareğin tamamını kullandığı için mesafe eşiğin iki yanına zıplıyordu.
+# Kabul eşiği burada YOKTUR: DeepFace'in VGG-Face + cosine varsayılanı (0.68) kullanılır.
+DEDEKTOR            = "skip"
+YUZ_KIRPMA_PAYI     = 0.25        # kutunun her kenarına eklenen pay (alın/çene)
+MIN_YUZ_KENARI      = 60          # bundan küçük kutu tanınmaz ve yetkisiz de sayılmaz
+KARAR_MIN_ORNEK     = 2           # art arda bu kadar aynı sonuç gerekir (tek kare yetmez)
+YUZSUZ_SIFIRLAMA_KARE = 8         # yüz bu kadar kare yoksa oylar silinir
 KARE_ATLAMA         = 20          # her N karede bir analiz
 KAMERA_INDEKSI      = int(os.getenv("YUZ_KAMERA_INDEKSI", "0"))
 MEDIAPIPE_MIN_GUVEN = 0.5
