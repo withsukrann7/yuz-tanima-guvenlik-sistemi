@@ -13,7 +13,7 @@ from PyQt5.QtGui import QImage
 
 from . import config
 from .yuz_tanima import FaceRecognizer, gorsel_yaz
-from .yuz_bulucu import YuzBulucu
+from .yuz_bulucu import YuzBulucu, yuz_kirp
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,30 @@ def ascii_cevir(metin: str) -> str:
     tr = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
     s = str(metin).translate(tr)
     return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
+
+
+def erisim_karari(son_sonuclar, min_ornek):
+    """Tek karelik tanıma sonucundan kapı veya alarm üretmez.
+
+    son_sonuclar: en yeni sonda, (yetkili mi, isim veya None).
+    Yetkili: son `min_ornek` örnek art arda aynı kişi ve hepsi eşiğin altında.
+    Yetkisiz: son `min_ornek` örnek art arda ret.
+    Karışık sonuç beklemede kalır; bu, eşiği düşürmeden yanlış alarmı keser
+    ve tek tesadüfi eşleşmenin içeri almasını da engeller.
+    """
+    if min_ornek < 1:
+        raise ValueError("min_ornek en az 1 olmalıdır")
+    if len(son_sonuclar) < min_ornek:
+        return "bekliyor", None
+    pencere = son_sonuclar[-min_ornek:]
+    if all(ok for ok, _isim in pencere):
+        isimler = [isim for _ok, isim in pencere]
+        if isimler[0] and all(isim == isimler[0] for isim in isimler):
+            return "yetkili", isimler[0]
+        return "bekliyor", None
+    if all(not ok for ok, _isim in pencere):
+        return "yetkisiz", None
+    return "bekliyor", None
 
 
 class KameraThread(QThread):
@@ -44,6 +68,10 @@ class KameraThread(QThread):
         self.current_color_bgr = (128, 128, 128)
         self.frame_count = 0
         self._analiz_hatasi_bildirildi = False
+        self._oylar = []
+        self._yuzsuz_kare = 0
+        self._video_t0 = None
+        self._son_video_ms = 0
 
     # ── Durdur ──────────────────────────────
     def stop(self) -> bool:
@@ -63,6 +91,18 @@ class KameraThread(QThread):
             self._last_notify[person_id] = now
             return True
         return False
+
+    def _video_ms(self) -> int:
+        """MediaPipe video modu milisaniye ister; kare numarası zaman değildir."""
+        simdi = time.monotonic()
+        if self._video_t0 is None:
+            self._video_t0 = simdi
+            self._son_video_ms = 0
+        ms = int((simdi - self._video_t0) * 1000)
+        if ms <= self._son_video_ms:
+            ms = self._son_video_ms + 1
+        self._son_video_ms = ms
+        return ms
 
     # ── Snapshot ────────────────────────────
     def _save_snapshot(self, frame, timestamp: str) -> str:
@@ -109,23 +149,32 @@ class KameraThread(QThread):
             name, authorized, confidence = self.recognizer.identify(face_crop)
             if self._stop_flag:
                 return
+            with self._lock:
+                self._oylar.append((bool(authorized), name if authorized else None))
+                fazla = len(self._oylar) - config.KARAR_MIN_ORNEK
+                if fazla > 0:
+                    del self._oylar[:fazla]
+                karar, karar_isim = erisim_karari(list(self._oylar), config.KARAR_MIN_ORNEK)
             now = datetime.now()
             timestamp = now.strftime("%Y-%m-%d %H:%M:%S")
             saat_str = now.strftime("%H:%M:%S")
 
-            if authorized:
-                label = f"YETKILI: {ascii_cevir(name)} ({confidence:.0%})"
+            if karar == "yetkili":
+                label = f"YETKILI: {ascii_cevir(karar_isim)} ({confidence:.0%})"
                 color_bgr = (0, 220, 0)
-                if self._should_notify(name):
-                    self._log_json(name, True, timestamp)
-                    self.yetkili_giris.emit(name, confidence)
-            else:
+                if self._should_notify(karar_isim):
+                    self._log_json(karar_isim, True, timestamp)
+                    self.yetkili_giris.emit(karar_isim, confidence)
+            elif karar == "yetkisiz":
                 label = "BILINMEYEN KISI"
                 color_bgr = (0, 0, 220)
                 if self._should_notify("UNKNOWN"):
                     snap = self._save_snapshot(full_frame, timestamp)
                     self._log_json("Bilinmeyen", False, timestamp)
                     self.yetkisiz_giris.emit(snap, saat_str)
+            else:
+                label = "Dogrulaniyor..."
+                color_bgr = (0, 180, 255)
         except Exception as e:
             logger.exception("Yüz analizi başarısız")
             label, color_bgr = "ANALIZ HATASI", (0, 140, 255)
@@ -183,23 +232,36 @@ class KameraThread(QThread):
                     break
 
                 self.frame_count += 1
-                yuzler = yuz_bulucu.tespit_et(frame, self.frame_count)
+                yuzler = yuz_bulucu.tespit_et(frame, self._video_ms())
 
-                if (len(yuzler) > 0 and not self._analysis_running
-                        and self.frame_count % config.KARE_ATLAMA == 0):
-                    x, y, w, h = max(yuzler, key=lambda f: f[2] * f[3])
-                    face_crop = frame[y:y + h, x:x + w].copy()
-                    full_frame_copy = frame.copy()
-                    with self._lock:
-                        self._analysis_running = True
-                    self._analysis_thread = threading.Thread(
-                        target=self._analyze_async, args=(face_crop, full_frame_copy), daemon=True
-                    )
-                    self._analysis_thread.start()
-                elif len(yuzler) == 0:
+                if len(yuzler) == 0:
+                    self._yuzsuz_kare += 1
                     with self._lock:
                         self.current_label = "Yuz Algilanmadi"
                         self.current_color_bgr = (128, 128, 128)
+                        if self._yuzsuz_kare >= config.YUZSUZ_SIFIRLAMA_KARE:
+                            self._oylar.clear()
+                else:
+                    self._yuzsuz_kare = 0
+                    if (not self._analysis_running
+                            and self.frame_count % config.KARE_ATLAMA == 0):
+                        x, y, w, h = max(yuzler, key=lambda f: f[2] * f[3])
+                        if min(w, h) < config.MIN_YUZ_KENARI:
+                            with self._lock:
+                                self.current_label = "Yuz cok kucuk - yaklasin"
+                                self.current_color_bgr = (0, 180, 255)
+                        else:
+                            face_crop = yuz_kirp(frame, (x, y, w, h), config.YUZ_KIRPMA_PAYI)
+                            if face_crop is not None:
+                                full_frame_copy = frame.copy()
+                                with self._lock:
+                                    self._analysis_running = True
+                                self._analysis_thread = threading.Thread(
+                                    target=self._analyze_async,
+                                    args=(face_crop, full_frame_copy),
+                                    daemon=True,
+                                )
+                                self._analysis_thread.start()
 
                 frame = self._draw_overlay(frame, yuzler)
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
