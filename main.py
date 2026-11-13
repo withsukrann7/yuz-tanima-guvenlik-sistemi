@@ -1,5 +1,4 @@
 """Yüz Tanıma Güvenlik Sistemi — başlatma noktası.
-
 Çalıştırma:   python main.py
 """
 import logging
@@ -27,7 +26,7 @@ except Exception as e:                      # noqa: BLE001
 from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import QApplication, QMessageBox
 
-from yuz_tanima_app import config
+from yuz_tanima_app import config 
 
 
 def _logging_kur():
