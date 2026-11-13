@@ -54,21 +54,26 @@ class LivenessDetector:
     def reset(self):
         self._stage = "waiting_for_open_eyes"
         self._closed_frames = 0
-        self._started_at = time.monotonic()
+        self._started_at = None
         self._passed = False
 
     def update(self, image_bgr, timestamp_ms):
-        """Process one frame; return True after a complete blink."""
+        """Return pending, passed, or failed for the current face challenge."""
         if self._passed:
-            return True
-        if time.monotonic() - self._started_at > config.LIVENESS_TIMEOUT_SECONDS:
+            return "passed"
+
+        now = time.monotonic()
+        if self._started_at is None:
+            self._started_at = now
+        elif now - self._started_at >= config.LIVENESS_TIMEOUT_SECONDS:
             self.reset()
+            return "failed"
 
         rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
         mp_goruntu = self._mp.Image(image_format=self._mp.ImageFormat.SRGB, data=rgb)
         result = self._landmarker.detect_for_video(mp_goruntu, int(timestamp_ms))
         if not result.face_landmarks:
-            return False
+            return "pending"
 
         landmarks = result.face_landmarks[0]
         ratios = [self._eye_aspect_ratio(landmarks, ids) for ids in self._EYE_LANDMARKS]
@@ -86,7 +91,7 @@ class LivenessDetector:
         elif (self._stage == "waiting_for_reopen"
                 and eye_ratio >= config.LIVENESS_EYE_OPEN_THRESHOLD):
             self._passed = True
-        return self._passed
+        return "passed" if self._passed else "pending"
 
     def close(self):
         self._landmarker.close()
