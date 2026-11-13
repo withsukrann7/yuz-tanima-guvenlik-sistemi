@@ -16,6 +16,62 @@ from .kamera import KameraThread
 
 logger = logging.getLogger(__name__)
 
+CAMERA_EVENT_LABELS = {
+    "CAMERA_BLK_ACTIVE": "Kamera görüntüsü engellenmiş olabilir",
+    "CAMERA_BLK_RESOLVED": "Kamera görüntüsü normale döndü",
+    "CAMERA_OCC_ACTIVE": "Kamera görüntüsü kapatılmış olabilir",
+    "CAMERA_OCC_RESOLVED": "Kamera görüntüsü yeniden açıldı",
+    "CAMERA_FRZ_ACTIVE": "Kamera görüntüsü donmuş olabilir",
+    "CAMERA_FRZ_RESOLVED": "Kamera görüntüsü yeniden değişiyor",
+    "CAMERA_READ_ACTIVE": "Kameradan görüntü karesi alınamadı",
+    "CAMERA_READ_RESOLVED": "Kamera görüntüsü yeniden alınıyor",
+}
+
+
+def camera_event_label(status):
+    return CAMERA_EVENT_LABELS.get(status)
+
+
+class CameraWarningDialog(QDialog):
+    def __init__(self, message, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Şüpheli Kamera Durumu")
+        self.setMinimumWidth(440)
+        self.setWindowFlag(Qt.WindowContextHelpButtonHint, False)
+        self.setStyleSheet("QDialog{background:#FFFFFF;} QLabel{font-family:'Segoe UI';}")
+
+        layout = QVBoxLayout(self); layout.setContentsMargins(0,0,0,0); layout.setSpacing(0)
+        stripe = QFrame(); stripe.setFixedHeight(7); stripe.setStyleSheet("background:#B4232F;border:none;")
+        layout.addWidget(stripe)
+        content = QVBoxLayout(); content.setContentsMargins(24,20,24,20); content.setSpacing(14)
+        layout.addLayout(content)
+
+        heading = QHBoxLayout(); heading.setSpacing(12)
+        icon = QLabel("!"); icon.setFixedSize(42,42); icon.setAlignment(Qt.AlignCenter)
+        icon.setStyleSheet("background:#FCE8E9;color:#B4232F;border-radius:21px;font-size:23px;font-weight:700;")
+        heading.addWidget(icon)
+        text_column = QVBoxLayout(); text_column.setSpacing(4)
+        title = QLabel("Şüpheli kamera durumu")
+        title.setStyleSheet("color:#252B36;font-size:17px;font-weight:700;")
+        text_column.addWidget(title)
+        severity = QLabel("YÜKSEK ÖNEM")
+        severity.setStyleSheet("background:#B4232F;color:#FFFFFF;border-radius:8px;padding:4px 8px;font-size:10px;font-weight:700;")
+        severity.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        text_column.addWidget(severity); heading.addLayout(text_column); heading.addStretch()
+        content.addLayout(heading)
+
+        description = QLabel(message)
+        description.setWordWrap(True)
+        description.setStyleSheet("background:#FFF5F5;color:#5C252A;border:1px solid #F2C7CA;border-radius:10px;padding:13px;font-size:13px;")
+        content.addWidget(description)
+
+        buttons = QHBoxLayout(); buttons.addStretch()
+        close_button = QPushButton("Kapat"); close_button.setMinimumSize(100,36)
+        close_button.setCursor(Qt.PointingHandCursor)
+        close_button.setStyleSheet("QPushButton{background:#FFFFFF;color:#5B6472;border:1px solid #D5D9E0;border-radius:8px;padding:0 16px;font-size:12px;font-weight:600;} QPushButton:hover{background:#F4F5F7;}")
+        close_button.clicked.connect(self.accept)
+        buttons.addWidget(close_button); content.addLayout(buttons)
+
 
 class Dashboard(QMainWindow):
     def __init__(self):
@@ -28,6 +84,8 @@ class Dashboard(QMainWindow):
         self._kamera_thread = None
         self._takili_threadler = []     # zamanında durmayan thread'ler (GC'den korunur)
         self._db_hata_metni = ""
+        self._kamera_bildirim_kapananlar = set()
+        self._kamera_bildirimleri = {}
 
         # DeepFace'i ana thread'de önceden yükle (thread'de DLL sorunu olur).
         # Başarısızlık _baslangic_kontrolleri içinde kullanıcıya bildirilir.
@@ -200,6 +258,7 @@ class Dashboard(QMainWindow):
         th.yeni_frame.connect(self._frame_guncelle)
         th.yetkili_giris.connect(self._yetkili_islemi)
         th.yetkisiz_giris.connect(self._yetkisiz_olay)
+        th.camera_event_changed.connect(self._kamera_olayi_guncellendi)
         th.hata.connect(self._kamera_hatasi)
         th.finished.connect(lambda t=th: self._kamera_bitti(t))
         self._kamera_thread = th
@@ -211,11 +270,23 @@ class Dashboard(QMainWindow):
         th, self._kamera_thread = self._kamera_thread, None
         if th is None:
             return
+        camera_name = f"Kamera {th.camera_index + 1}"
+        for event_type in veritabani.CAMERA_EVENT_STATUSES:
+            try:
+                # Operator stop closes any open incident at the stop action.
+                veritabani.enqueue_camera_event_transition(camera_name, event_type, False)
+            except Exception:
+                logger.exception(
+                    "Kamera durdurulurken açık olay kapatılamadı: camera=%s type=%s",
+                    camera_name, event_type,
+                )
         th.blockSignals(True)            # durma sırasında gelen eski sinyalleri yok say
         if not th.stop():
             logger.error("Kamera thread'i zamanında durmadı; arka planda bitmesi bekleniyor.")
             self._takili_threadler.append(th)
         logger.info("Kamera durduruldu.")
+        QTimer.singleShot(350, self._dashboard_yenile)
+        QTimer.singleShot(1000, self._dashboard_yenile)
 
     def _kamera_bitti(self, th):
         """Thread kullanıcı istemeden sonlandıysa (kamera yok/bağlantı koptu) arayüzü sıfırla."""
@@ -226,7 +297,16 @@ class Dashboard(QMainWindow):
 
     @pyqtSlot(str)
     def _kamera_hatasi(self, mesaj: str):
+        if mesaj.startswith("Şüpheli kamera durumu:"):
+            CameraWarningDialog(mesaj, self).exec_()
+            QTimer.singleShot(500, self._dashboard_yenile)
+            return
         QMessageBox.warning(self, "Kamera / Analiz Hatası", mesaj)
+
+    def _kamera_olayi_guncellendi(self, camera_name, event_type, active):
+        """Refresh the overview after the queued camera transition reaches the DB."""
+        QTimer.singleShot(350, self._dashboard_yenile)
+        QTimer.singleShot(1000, self._dashboard_yenile)
 
     def _kamera_ui_ayarla(self, aktif: bool):
         if aktif:
@@ -349,7 +429,7 @@ class Dashboard(QMainWindow):
         def q0(sql, p=None): r = self._db(sql, p); return r[0][0] if r else 0
         toplam_k = q0("SELECT COUNT(*) FROM yetkili_kisiler")
         bugun_g  = q0("SELECT COUNT(*) FROM giris_kayitlari WHERE tarih=%s AND durum='Basarili'",(bugun,))
-        t_den    = q0("SELECT COUNT(*) FROM giris_kayitlari WHERE tarih=%s",(bugun,))
+        t_den    = q0("SELECT COUNT(*) FROM giris_kayitlari WHERE tarih=%s AND LEFT(durum, 7) <> %s",(bugun,"CAMERA_"))
         y_say    = q0("SELECT COUNT(*) FROM yetkisiz_kayitlar WHERE tarih=%s",(bugun,))
         basari   = round(bugun_g/t_den*100,1) if t_den>0 else 0
 
@@ -396,13 +476,17 @@ class Dashboard(QMainWindow):
         aktiviteler = self._db("SELECT isim,durum,tarih,saat FROM giris_kayitlari ORDER BY tarih DESC,saat DESC LIMIT 5")
         for row in (aktiviteler or []):
             isim, durum, tarih, saat = row; ok = durum == "Basarili"
+            event_label = camera_event_label(durum)
+            resolved_event = event_label and durum.endswith("_RESOLVED")
             r = QHBoxLayout(); r.setSpacing(10)
-            ic = QLabel("✓" if ok else "✗"); ic.setFixedSize(28,28); ic.setAlignment(Qt.AlignCenter)
-            ic.setStyleSheet(f"background:{'#dcfce7' if ok else '#fee2e2'};border-radius:14px;color:{'#15803d' if ok else '#dc2626'};font-size:13px;border:none;")
+            ic = QLabel("✓" if ok or resolved_event else ("!" if event_label else "✗")); ic.setFixedSize(28,28); ic.setAlignment(Qt.AlignCenter)
+            bg = "#dcfce7" if ok or resolved_event else ("#fef3c7" if event_label else "#fee2e2")
+            fg = "#15803d" if ok or resolved_event else ("#d97706" if event_label else "#dc2626")
+            ic.setStyleSheet(f"background:{bg};border-radius:14px;color:{fg};font-size:13px;border:none;")
             r.addWidget(ic)
             col = QVBoxLayout(); col.setSpacing(1)
             al = QLabel(isim); al.setStyleSheet(f"font-size:12px;font-weight:500;color:{YAZI_KOYU};border:none;")
-            cl2 = QLabel(durum); cl2.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;")
+            cl2 = QLabel(event_label or durum); cl2.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;")
             col.addWidget(al); col.addWidget(cl2); r.addLayout(col); r.addStretch()
             sl2 = QLabel(str(saat)[:8] if saat else "-"); sl2.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;"); r.addWidget(sl2)
             sl.addLayout(r); sl.addWidget(sep_cizgi())
@@ -423,6 +507,114 @@ class Dashboard(QMainWindow):
             sgl.addLayout(r); sgl.addWidget(sep_cizgi())
         arow.addWidget(sag, 2)
         self._dash_icerik_lay.addLayout(arow)
+
+        camera_rows = self._db(
+            "SELECT isim,tarih,saat,durum FROM giris_kayitlari "
+            "WHERE LEFT(durum, 7) = %s ORDER BY id ASC",
+            ("CAMERA_",),
+        )
+        camera_intervals = veritabani.camera_access_intervals(
+            camera_rows, today=bugun, now=datetime.now()
+        )
+        for interval in camera_intervals:
+            key = (interval["camera_name"], interval["event_type"], interval["start"])
+            if interval["ongoing"] and key not in self._kamera_bildirim_kapananlar:
+                self._kamera_bildirimleri[key] = interval
+            elif key in self._kamera_bildirimleri:
+                self._kamera_bildirimleri[key] = interval
+        if self._kamera_bildirimleri:
+            notice = QFrame(); notice.setStyleSheet("background:#FFF5F5;border:1px solid #E9AEB3;border-left:5px solid #B4232F;border-radius:12px;")
+            nl = QVBoxLayout(notice); nl.setContentsMargins(16,12,16,12); nl.setSpacing(8)
+            notice_title = QLabel("YÜKSEK ÖNEM  ·  Şüpheli kamera durumu")
+            notice_title.setStyleSheet("font-size:13px;font-weight:700;color:#A21D29;border:none;")
+            nl.addWidget(notice_title)
+            for key, interval in list(self._kamera_bildirimleri.items()):
+                detail_row = QHBoxLayout(); detail_row.setSpacing(10)
+                state = "Kesinti sürüyor" if interval["ongoing"] else "Kesinti sona erdi"
+                started = QLabel(f"{interval['camera_name']} · {state} · Başlangıç {interval['start'].strftime('%H:%M:%S')}")
+                started.setStyleSheet("font-size:12px;color:#5C252A;border:none;")
+                detail_row.addWidget(started); detail_row.addStretch()
+                details_button = QPushButton("Saat ve süreyi gör")
+                details_button.setCursor(Qt.PointingHandCursor); details_button.setFixedHeight(30)
+                details_button.setStyleSheet("QPushButton{background:#B4232F;color:white;border:none;border-radius:8px;padding:0 12px;font-size:11px;font-weight:600;} QPushButton:hover{background:#8F1C26;}")
+                details_button.clicked.connect(
+                    lambda _, item=interval, notification_key=key:
+                    self._kamera_kesinti_detayi_goster(item, notification_key)
+                )
+                detail_row.addWidget(details_button); nl.addLayout(detail_row)
+            if nl.count() > 1:
+                self._dash_icerik_lay.addWidget(notice)
+        history = kart_frame()
+        hl = QVBoxLayout(history); hl.setContentsMargins(18,16,18,16); hl.setSpacing(8)
+        header = QHBoxLayout()
+        header.addWidget(baslik_label("Kamera Erişim Geçmişi",14)); header.addStretch()
+        count_label = QLabel(f"{len(camera_intervals)} kesinti")
+        count_label.setStyleSheet("background:#EEF0FF;color:#5141B8;border-radius:9px;padding:4px 10px;font-size:11px;font-weight:500;border:none;")
+        header.addWidget(count_label); hl.addLayout(header)
+        if not camera_intervals:
+            empty = QLabel("Bugün kamera erişim kesintisi kaydedilmedi.")
+            empty.setStyleSheet(f"font-size:12px;color:{YAZI_GRI};border:none;padding:4px 0;")
+            hl.addWidget(empty)
+        else:
+            event_names = {
+                "blocked": "Kamera görüntüsü engellendi",
+                "occluded": "Kamera görüntüsü kapatıldı",
+                "frozen": "Kamera görüntüsü dondu",
+                "read_failure": "Kameraya erişim kesildi",
+            }
+            for interval in camera_intervals:
+                row = QHBoxLayout(); row.setSpacing(12)
+                start = interval["start"]
+                start_label = QLabel(start.strftime("%d.%m %H:%M:%S"))
+                start_label.setStyleSheet("font-size:12px;color:#A96C22;font-weight:500;border:none;min-width:120px;")
+                row.addWidget(start_label)
+                detail = QLabel(f"{interval['camera_name']} · {event_names.get(interval['event_type'], 'Kamera erişim kesintisi')}")
+                detail.setStyleSheet(f"font-size:12px;color:{YAZI_KOYU};border:none;")
+                row.addWidget(detail); row.addStretch()
+                end_text = interval["end"].strftime("%H:%M:%S") if interval["end"] else "Devam ediyor"
+                duration = interval["duration_seconds"]
+                hours, remainder = divmod(duration, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                duration_text = f"{hours} sa {minutes} dk {seconds} sn" if hours else f"{minutes} dk {seconds} sn"
+                tail = QLabel(f"{end_text} · {duration_text}")
+                tail.setStyleSheet(f"font-size:11px;color:{KIRMIZI if interval['ongoing'] else YAZI_GRI};font-weight:500;border:none;")
+                row.addWidget(tail)
+                detail_button = QPushButton("Ayrıntı")
+                detail_button.setCursor(Qt.PointingHandCursor); detail_button.setFixedHeight(27)
+                detail_button.setStyleSheet("QPushButton{background:#FFFFFF;color:#A21D29;border:1px solid #E9AEB3;border-radius:7px;padding:0 9px;font-size:10px;font-weight:600;} QPushButton:hover{background:#FFF0F1;}")
+                detail_button.clicked.connect(
+                    lambda _, item=interval: self._kamera_kesinti_detayi_goster(item)
+                )
+                row.addWidget(detail_button)
+                hl.addLayout(row)
+                if interval is not camera_intervals[-1]:
+                    hl.addWidget(sep_cizgi())
+        self._dash_icerik_lay.addWidget(history)
+
+    def _kamera_kesinti_detayi_goster(self, interval, notification_key=None):
+        if notification_key is not None:
+            self._kamera_bildirim_kapananlar.add(notification_key)
+            self._kamera_bildirimleri.pop(notification_key, None)
+            QTimer.singleShot(0, self._dashboard_yenile)
+        start = interval["start"].strftime("%d.%m.%Y %H:%M:%S")
+        end = interval["end"].strftime("%d.%m.%Y %H:%M:%S") if interval["end"] else "Devam ediyor"
+        seconds = interval["duration_seconds"]
+        hours, remainder = divmod(seconds, 3600)
+        minutes, secs = divmod(remainder, 60)
+        duration = f"{hours} sa {minutes} dk {secs} sn" if hours else f"{minutes} dk {secs} sn"
+        dialog = QMessageBox(self)
+        dialog.setWindowTitle("Kamera Kesinti Ayrıntısı")
+        dialog.setIcon(QMessageBox.Warning if interval["ongoing"] else QMessageBox.Information)
+        dialog.setTextFormat(Qt.RichText)
+        dialog.setText(
+            f"<b>{interval['camera_name']}</b><br><br>"
+            f"<b>Başlangıç:</b> {start}<br>"
+            f"<b>Bitiş:</b> {end}<br>"
+            f"<b>Toplam kapalı kalma:</b> {duration}"
+        )
+        dialog.setStandardButtons(QMessageBox.Ok)
+        dialog.setStyleSheet("QMessageBox{background:white;} QLabel{color:#303744;font-family:'Segoe UI';font-size:13px;min-width:330px;} QPushButton{background:#B4232F;color:white;border:none;border-radius:7px;padding:7px 20px;font-weight:600;}")
+        dialog.exec_()
 
     # ══════════════════════════════════════
     #  SAYFA 1 — YÜZ KAYIT
@@ -744,7 +936,7 @@ class Dashboard(QMainWindow):
         ikl.addWidget(baslik_label("Anlık İstatistikler",14))
         bugun = datetime.now().date()
         def q0(sql,p=None): r=self._db(sql,p); return r[0][0] if r else 0
-        t_t=q0("SELECT COUNT(*) FROM giris_kayitlari WHERE tarih=%s",(bugun,))
+        t_t=q0("SELECT COUNT(*) FROM giris_kayitlari WHERE tarih=%s AND LEFT(durum, 7) <> %s",(bugun,"CAMERA_"))
         b_s=q0("SELECT COUNT(*) FROM giris_kayitlari WHERE tarih=%s AND durum='Basarili'",(bugun,))
         y_s=q0("SELECT COUNT(*) FROM yetkisiz_kayitlar WHERE tarih=%s",(bugun,))
         bas=round(b_s/t_t*100,1) if t_t>0 else 0
@@ -765,7 +957,7 @@ class Dashboard(QMainWindow):
             ic.setStyleSheet(f"background:{'#dcfce7' if ok else '#fef3c7'};border-radius:13px;color:{'#15803d' if ok else '#d97706'};font-size:12px;border:none;"); r.addWidget(ic)
             col=QVBoxLayout(); col.setSpacing(1)
             al=QLabel(isim); al.setStyleSheet(f"font-size:12px;font-weight:500;color:{YAZI_KOYU};border:none;")
-            cl2=QLabel("Kamera 1"); cl2.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;")
+            cl2=QLabel(camera_event_label(durum) or "Kamera 1"); cl2.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;")
             col.addWidget(al); col.addWidget(cl2); r.addLayout(col); r.addStretch()
             sl=QLabel(str(saat)[:8] if saat else "-"); sl.setAlignment(Qt.AlignRight); sl.setStyleSheet(f"font-size:11px;color:{YAZI_GRI};border:none;"); r.addWidget(sl)
             tkl.addLayout(r); tkl.addWidget(sep_cizgi())
@@ -807,7 +999,7 @@ class Dashboard(QMainWindow):
         self._gecmis_arama = QLineEdit(); self._gecmis_arama.setPlaceholderText("🔍  İsim ile ara..."); self._gecmis_arama.setFixedHeight(40); self._gecmis_arama.setStyleSheet(input_stili())
         self._gecmis_arama.textChanged.connect(self._gecmis_filtrele); f_row.addWidget(self._gecmis_arama,2)
         self._gecmis_tip = QComboBox(); self._gecmis_tip.setFixedHeight(40); self._gecmis_tip.setStyleSheet(combobox_stili())
-        self._gecmis_tip.addItems(["Tüm Kayıtlar","Giriş","Çıkış","Bilinmeyen"]); self._gecmis_tip.currentTextChanged.connect(self._gecmis_filtrele); f_row.addWidget(self._gecmis_tip,1)
+        self._gecmis_tip.addItems(["Tüm Kayıtlar","Giriş","Çıkış","Bilinmeyen","Şüpheli Kamera","Kamera Çözüldü"]); self._gecmis_tip.currentTextChanged.connect(self._gecmis_filtrele); f_row.addWidget(self._gecmis_tip,1)
         self._gecmis_tarih = QComboBox(); self._gecmis_tarih.setFixedHeight(40); self._gecmis_tarih.setStyleSheet(combobox_stili())
         self._gecmis_tarih.addItems(["Bugün","Dün","Bu Hafta","Bu Ay"]); self._gecmis_tarih.currentTextChanged.connect(self._gecmis_filtrele); f_row.addWidget(self._gecmis_tarih,1)
         eb = mavi_btn("📊  Excel'e Aktar",40); eb.setFixedWidth(150); eb.clicked.connect(self._excele_aktar); f_row.addWidget(eb)
@@ -836,7 +1028,7 @@ class Dashboard(QMainWindow):
             if item.widget(): item.widget().deleteLater()
         bugun = datetime.now().date()
         def q0(sql,p=None): r=self._db(sql,p); return r[0][0] if r else 0
-        t=q0("SELECT COUNT(*) FROM giris_kayitlari WHERE tarih=%s",(bugun,))
+        t=q0("SELECT COUNT(*) FROM giris_kayitlari WHERE tarih=%s AND LEFT(durum, 7) <> %s",(bugun,"CAMERA_"))
         g=q0("SELECT COUNT(*) FROM giris_kayitlari WHERE tarih=%s AND durum='Basarili'",(bugun,))
         y=q0("SELECT COUNT(*) FROM yetkisiz_kayitlar WHERE tarih=%s",(bugun,))
         for sayi, etiket, ikon, bg, fg in [(t,"Toplam Kayıt","📋","#dbeafe","#1d4ed8"),(g,"Giriş","✅","#dcfce7","#15803d"),(t-g,"Diğer","🔄","#fef3c7","#d97706"),(y,"Bilinmeyen","⚠️","#fee2e2","#dc2626")]:
@@ -847,8 +1039,18 @@ class Dashboard(QMainWindow):
         self._gecmis_verileri = []
         idx = 1
         for isim, durum, tarih, saat in giris_rows:
-            tip = "Giriş" if durum=="Basarili" else "Çıkış"; ok = durum=="Basarili"
-            self._gecmis_verileri.append((f"#{idx:04d}",isim,tip,tarih.strftime("%d.%m.%Y") if hasattr(tarih,'strftime') else str(tarih),str(saat)[:8] if saat else "-","Kamera 1","—",ok))
+            event_label = camera_event_label(durum)
+            if event_label:
+                tip = "Şüpheli Kamera" if durum.endswith("_ACTIVE") else "Kamera Çözüldü"
+                ad = event_label
+                kamera = isim
+                ok = False
+            else:
+                tip = "Giriş" if durum=="Basarili" else "Çıkış"
+                ad = isim
+                kamera = "Kamera 1"
+                ok = durum=="Basarili"
+            self._gecmis_verileri.append((f"#{idx:04d}",ad,tip,tarih.strftime("%d.%m.%Y") if hasattr(tarih,'strftime') else str(tarih),str(saat)[:8] if saat else "-",kamera,"—",ok))
             idx+=1
         for foto, tarih, saat in yt_rows:
             self._gecmis_verileri.append((f"#{idx:04d}","Bilinmeyen Kişi","Bilinmeyen",tarih.strftime("%d.%m.%Y") if hasattr(tarih,'strftime') else str(tarih),str(saat)[:8] if saat else "-","Kamera 1","—",False))
@@ -866,7 +1068,7 @@ class Dashboard(QMainWindow):
             kl.addWidget(QLabel(ad)); kl.itemAt(1).widget().setStyleSheet(f"font-size:13px;color:{YAZI_KOYU};border:none;"); kl.addStretch(); t.setCellWidget(i,1,kw)
             tw = QWidget(); tw.setStyleSheet("background:transparent;")
             tl = QHBoxLayout(tw); tl.setContentsMargins(6,0,6,0); tl.setAlignment(Qt.AlignCenter)
-            tlbl = QLabel(tip); tlbl.setStyleSheet({"Giriş":"background:#E4F2ED;color:#277763;","Çıkış":"background:#F6EFE3;color:#A97638;","Bilinmeyen":"background:#F8E9EA;color:#A94F5A;"}.get(tip,"")+"border-radius:8px;padding:2px 8px;font-size:11px;font-weight:500;")
+            tlbl = QLabel(tip); tlbl.setStyleSheet({"Giriş":"background:#E4F2ED;color:#277763;","Çıkış":"background:#F6EFE3;color:#A97638;","Bilinmeyen":"background:#F8E9EA;color:#A94F5A;","Şüpheli Kamera":"background:#FEF3C7;color:#A16207;","Kamera Çözüldü":"background:#E4F2ED;color:#277763;"}.get(tip,"")+"border-radius:8px;padding:2px 8px;font-size:11px;font-weight:500;")
             tl.addWidget(tlbl); t.setCellWidget(i,2,tw)
             for col, val in [(3,tarih),(4,saat),(5,kamera),(6,guven)]:
                 item=QTableWidgetItem(val); item.setTextAlignment(Qt.AlignCenter); t.setItem(i,col,item)

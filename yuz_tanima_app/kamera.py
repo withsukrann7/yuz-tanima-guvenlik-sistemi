@@ -11,7 +11,8 @@ import cv2
 from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtGui import QImage
 
-from . import config
+from . import config, veritabani
+from .camera_health import CameraHealthMonitor
 from .yuz_tanima import FaceRecognizer, gorsel_yaz
 from .yuz_bulucu import YuzBulucu, yuz_kirp
 
@@ -54,6 +55,7 @@ class KameraThread(QThread):
     yetkili_giris  = pyqtSignal(str, float)    # isim, güven
     yetkisiz_giris = pyqtSignal(str, str)      # snapshot yolu, saat metni
     hata           = pyqtSignal(str)           # kullanıcıya gösterilecek hata
+    camera_event_changed = pyqtSignal(str, str, bool)  # camera, event type, active
 
     def __init__(self, camera_index=None):
         super().__init__()
@@ -91,6 +93,26 @@ class KameraThread(QThread):
             self._last_notify[person_id] = now
             return True
         return False
+
+    def _camera_health_transitions(self, transitions):
+        camera_name = f"Kamera {self.camera_index + 1}"
+        descriptions = {
+            "blocked": "Kamera görüntüsü engellenmiş olabilir",
+            "occluded": "Kamera görüntüsü kapatılmış olabilir",
+            "frozen": "Kamera görüntüsü donmuş olabilir",
+            "read_failure": "Kamera açılamadı veya görüntü karesi alınamadı",
+        }
+        for event_type, active in transitions:
+            self.camera_event_changed.emit(camera_name, event_type, bool(active))
+            if active and self._should_notify(f"camera:{event_type}"):
+                self.hata.emit(f"Şüpheli kamera durumu: {descriptions[event_type]}.")
+            try:
+                veritabani.enqueue_camera_event_transition(camera_name, event_type, active)
+            except Exception:
+                logger.exception(
+                    "Kamera olayı veritabanına yazılamadı: camera=%s type=%s active=%s",
+                    camera_name, event_type, active,
+                )
 
     def _video_ms(self) -> int:
         """MediaPipe video modu milisaniye ister; kare numarası zaman değildir."""
@@ -214,23 +236,27 @@ class KameraThread(QThread):
     def run(self):
         cap = cv2.VideoCapture(self.camera_index)
         yuz_bulucu = None
+        health_monitor = CameraHealthMonitor()
         try:
             if not cap.isOpened():
                 msg = f"Kamera açılamadı (indeks {self.camera_index}). Bağlantıyı ve başka bir uygulamanın kullanıp kullanmadığını kontrol edin."
                 logger.error(msg)
-                self.hata.emit(msg)
+                self._camera_health_transitions(health_monitor.frame_unavailable())
                 return
             yuz_bulucu = YuzBulucu(video=True)
             logger.info("Kamera thread'i başlatıldı.")
 
             while not self._stop_flag:
                 ret, frame = cap.read()
-                if not ret:
+                if not ret or frame is None or frame.size == 0:
                     msg = "Kamera karesi alınamadı; kamera bağlantısı kesilmiş olabilir."
                     logger.error(msg)
-                    self.hata.emit(msg)
+                    if not self._stop_flag:
+                        self._camera_health_transitions(health_monitor.frame_unavailable())
                     break
 
+                self._camera_health_transitions(health_monitor.frame_recovered())
+                self._camera_health_transitions(health_monitor.observe(frame))
                 self.frame_count += 1
                 yuzler = yuz_bulucu.tespit_et(frame, self._video_ms())
 

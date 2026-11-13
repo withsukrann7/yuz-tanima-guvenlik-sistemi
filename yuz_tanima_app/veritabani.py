@@ -8,7 +8,9 @@ gösterir.
 İlk kurulum için:  python -m yuz_tanima_app.veritabani kur
 """
 import logging
+import queue
 import sys
+import threading
 import time
 from datetime import datetime
 
@@ -121,6 +123,137 @@ def yetkisiz_giris_kaydet(foto_yolu):
         "INSERT INTO yetkisiz_kayitlar (foto_yolu, tarih, saat) VALUES (%s, %s, %s)",
         (foto_yolu, simdi.date(), simdi.time()),
     )
+
+
+CAMERA_EVENT_STATUSES = {
+    # Keep CAMERA_ for existing filters and fit the live VARCHAR(20) column.
+    "blocked": ("CAMERA_BLK_ACTIVE", "CAMERA_BLK_RESOLVED"),
+    "occluded": ("CAMERA_OCC_ACTIVE", "CAMERA_OCC_RESOLVED"),
+    "frozen": ("CAMERA_FRZ_ACTIVE", "CAMERA_FRZ_RESOLVED"),
+    "read_failure": ("CAMERA_READ_ACTIVE", "CAMERA_READ_RESOLVED"),
+}
+
+
+def camera_access_intervals(rows, today=None, now=None):
+    """Build today's camera downtime intervals from existing transition rows.
+
+    Rows are `(camera_name, date, time, status)` tuples ordered by database id.
+    An unresolved event is returned as ongoing, including when it began before
+    today, so a continuing outage remains visible in the daily overview.
+    """
+    today = today or datetime.now().date()
+    now = now or datetime.now()
+    status_types = {
+        status: (event_type, active)
+        for event_type, statuses in CAMERA_EVENT_STATUSES.items()
+        for status, active in ((statuses[0], True), (statuses[1], False))
+    }
+    open_events = {}
+    intervals = []
+
+    for camera_name, event_date, event_time, status in rows or ():
+        event_info = status_types.get(status)
+        if not event_info:
+            continue
+        event_type, active = event_info
+        key = (camera_name, event_type)
+        occurred_at = datetime.combine(event_date, event_time)
+        if active:
+            open_events[key] = occurred_at
+            continue
+
+        started_at = open_events.pop(key, None)
+        if started_at is not None and started_at.date() == today:
+            intervals.append({
+                "camera_name": camera_name,
+                "event_type": event_type,
+                "start": started_at,
+                "end": occurred_at,
+                "duration_seconds": max(0, int((occurred_at - started_at).total_seconds())),
+                "ongoing": False,
+            })
+
+    for (camera_name, event_type), started_at in open_events.items():
+        intervals.append({
+            "camera_name": camera_name,
+            "event_type": event_type,
+            "start": started_at,
+            "end": None,
+            "duration_seconds": max(0, int((now - started_at).total_seconds())),
+            "ongoing": True,
+        })
+
+    return sorted(intervals, key=lambda interval: interval["start"], reverse=True)
+
+
+def record_camera_event_transition(camera_name, event_type, active):
+    """Persist camera-event state changes using the existing access-log schema.
+
+    Returns True only when a new active/resolved row was inserted. Reserved
+    CAMERA_* statuses keep camera events distinct from person entry counts.
+    """
+    if event_type not in CAMERA_EVENT_STATUSES:
+        raise ValueError(f"Unsupported camera event type: {event_type}")
+    if not isinstance(camera_name, str) or not camera_name.strip() or len(camera_name) > 150:
+        raise ValueError("camera_name must be a non-empty string of at most 150 characters")
+
+    active_status, resolved_status = CAMERA_EVENT_STATUSES[event_type]
+    latest = calistir(
+        "SELECT durum FROM giris_kayitlari "
+        "WHERE isim=%s AND durum IN (%s, %s) "
+        "ORDER BY id DESC LIMIT 1",
+        (camera_name, active_status, resolved_status),
+        getir=True,
+    )
+    currently_active = bool(latest and latest[0][0] == active_status)
+    if currently_active == bool(active):
+        return False
+
+    status = active_status if active else resolved_status
+    occurred_at = datetime.now()
+    calistir(
+        "INSERT INTO giris_kayitlari (isim, durum, tarih, saat) VALUES (%s, %s, %s, %s)",
+        (camera_name, status, occurred_at.date(), occurred_at.time()),
+    )
+    return True
+
+
+_camera_event_queue = queue.Queue()
+_camera_event_queue_lock = threading.Lock()
+_camera_event_worker = None
+
+
+def _write_camera_event_queue():
+    while True:
+        camera_name, event_type, active = _camera_event_queue.get()
+        try:
+            record_camera_event_transition(camera_name, event_type, active)
+        except Exception:
+            logger.exception(
+                "Queued camera event could not be saved: camera=%s type=%s active=%s",
+                camera_name, event_type, active,
+            )
+        finally:
+            _camera_event_queue.task_done()
+
+
+def enqueue_camera_event_transition(camera_name, event_type, active):
+    """Queue camera event persistence so camera/UI control threads never wait on PostgreSQL."""
+    if event_type not in CAMERA_EVENT_STATUSES:
+        raise ValueError(f"Unsupported camera event type: {event_type}")
+    if not isinstance(camera_name, str) or not camera_name.strip() or len(camera_name) > 150:
+        raise ValueError("camera_name must be a non-empty string of at most 150 characters")
+
+    global _camera_event_worker
+    with _camera_event_queue_lock:
+        _camera_event_queue.put((camera_name, event_type, bool(active)))
+        if _camera_event_worker is None or not _camera_event_worker.is_alive():
+            _camera_event_worker = threading.Thread(
+                target=_write_camera_event_queue,
+                name="camera-event-writer",
+                daemon=True,
+            )
+            _camera_event_worker.start()
 
 
 if __name__ == "__main__":

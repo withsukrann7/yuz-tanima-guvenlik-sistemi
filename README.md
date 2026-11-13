@@ -85,6 +85,10 @@ Depoda bulunmayan (veya `.gitignore` ile dışarıda tutulan) şu öğeleri proj
 4. **Sonuç** → yetkili: `giris_kayitlari` + `security_log.json`; yetkisiz: `snapshots/` görüntüsü + `yetkisiz_kayitlar` + uyarı penceresi. Aynı kişi için kayıt/bildirim `BILDIRIM_BEKLEME_SN` (10 sn) aralıklıdır.
 5. **Yetkili listesi** = veritabanındaki **Aktif** kullanıcılar + (veritabanında karşılığı olmayan) eski `known_faces/` dosyaları. Pasif/silinmiş kullanıcılar tanınmaz. Kullanıcı silindiğinde fotoğrafları **silinmez**, `arsiv/silinen_yuzler/` altına taşınır.
 
+## Kamera görüntüsü sağlığı
+
+Canlı izleme; kare parlaklığını, önceki sahneye göre değişimi, görüntü ayrıntısını ve ardışık küçültülmüş kare farkını ayarlanabilir eşiklerle denetler. Önceki sahneden belirgin biçimde farklı, geniş ölçüde düz/ayrıntısız bir görüntü 2,5 saniye sürerse (ör. el veya beyaz mendil kamerayı kapatırsa) örtülme şüphesi bildirir. Neredeyse siyah veya neredeyse değişmeyen görüntü 8 saniye sürerse ayrı uyarı verir; okunamayan kare anında uyarı üretir. Bunlar kesin ihlal kanıtı değildir. Kısa değişimler olay oluşturmaz; görüntü normale dönünce çözülme kaydı eklenir. Kamera olayları mevcut `giris_kayitlari` tablosunda `CAMERA_*` durumlarıyla tutulur; şema değişikliği gerekmez ve bu satırlar kişi giriş sayaçlarına dahil edilmez.
+
 ## Veritabanı yokken davranış
 
 Açılışta bağlantı ve tablolar denetlenir. Sorun varsa açıklayıcı bir uyarı gösterilir, sol menüde kalıcı **"⚠ Veritabanı bağlantısı yok"** etiketi çıkar (üzerine gelince ayrıntı) ve uygulama sınırlı modda sürer: kamera/tanıma çalışır, olay logu `security_log.json`'a yazılır, ama veritabanı kayıtları yazılamaz ve kullanıcı listesi/kaydı çalışmaz. Hatalar `security_system.log`'a yazılır; başarılı gibi gösterilmez.
