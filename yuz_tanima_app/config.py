@@ -32,6 +32,7 @@ LOGIN_ARKAPLAN        = PROJE_KOKU / "login_bg.png"
 
 DESTEKLENEN_UZANTILAR = (".jpg", ".jpeg", ".png", ".bmp")
 MEDIAPIPE_MODEL       = PROJE_KOKU / "models" / "blaze_face_short_range.tflite"
+MEDIAPIPE_FACE_LANDMARKER_MODEL = PROJE_KOKU / "models" / "face_landmarker.task"
 
 
 def yol_coz(yol):
@@ -92,3 +93,7 @@ YUZSUZ_SIFIRLAMA_KARE = 8         # yüz bu kadar kare yoksa oylar silinir
 KARE_ATLAMA         = 20          # her N karede bir analiz
 KAMERA_INDEKSI      = int(os.getenv("YUZ_KAMERA_INDEKSI", "0"))
 MEDIAPIPE_MIN_GUVEN = 0.5
+LIVENESS_EYE_OPEN_THRESHOLD = 0.23
+LIVENESS_EYE_CLOSED_THRESHOLD = 0.20
+LIVENESS_CLOSED_MIN_FRAMES = 2
+LIVENESS_TIMEOUT_SECONDS = 12

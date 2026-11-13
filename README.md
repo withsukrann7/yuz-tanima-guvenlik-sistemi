@@ -85,6 +85,10 @@ Depoda bulunmayan (veya `.gitignore` ile dışarıda tutulan) şu öğeleri proj
 4. **Sonuç** → yetkili: `giris_kayitlari` + `security_log.json`; yetkisiz: `snapshots/` görüntüsü + `yetkisiz_kayitlar` + uyarı penceresi. Aynı kişi için kayıt/bildirim `BILDIRIM_BEKLEME_SN` (10 sn) aralıklıdır.
 5. **Yetkili listesi** = veritabanındaki **Aktif** kullanıcılar + (veritabanında karşılığı olmayan) eski `known_faces/` dosyaları. Pasif/silinmiş kullanıcılar tanınmaz. Kullanıcı silindiğinde fotoğrafları **silinmez**, `arsiv/silinen_yuzler/` altına taşınır.
 
+### Canlılık kontrolü
+
+Kamera akışı, yüz tanımadan önce MediaPipe Face Landmarker ile göz kırpma kontrolü yapar. Ekranda `Goz kirpin` yönlendirmesi görünür; gözlerin açık olduğu, kapandığı ve yeniden açıldığı kare dizisi algılanınca mevcut DeepFace tanıma akışı başlar. Yüz kaybolursa kontrol sıfırlanır. Model dosyası `models/face_landmarker.task` olarak depoda bulunmalıdır; yeni Python paketi gerekmez. Bu temel kontrol fotoğraf gösterimini zorlaştırır, ancak video tekrarına veya gelişmiş sahteciliğe karşı güvence sağlamaz.
+
 ## Veritabanı yokken davranış
 
 Açılışta bağlantı ve tablolar denetlenir. Sorun varsa açıklayıcı bir uyarı gösterilir, sol menüde kalıcı **"⚠ Veritabanı bağlantısı yok"** etiketi çıkar (üzerine gelince ayrıntı) ve uygulama sınırlı modda sürer: kamera/tanıma çalışır, olay logu `security_log.json`'a yazılır, ama veritabanı kayıtları yazılamaz ve kullanıcı listesi/kaydı çalışmaz. Hatalar `security_system.log`'a yazılır; başarılı gibi gösterilmez.
