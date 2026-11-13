@@ -1,117 +1,163 @@
-# Görüntü İşleme ile Yüz Tanıma ve Güvenlik Sistemi
+# Kamera Tabanlı Yüz Tanıma ve Güvenlik Sistemi
 
-![Python](https://img.shields.io/badge/Python-3.10--3.12-blue?style=for-the-badge)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-336791?style=for-the-badge&logo=postgresql&logoColor=white)
-![DeepFace](https://img.shields.io/badge/AI-DeepFace-green?style=for-the-badge)
-![PyQt5](https://img.shields.io/badge/Desktop-PyQt5-orange?style=for-the-badge)
+Zonguldak Bülent Ecevit Üniversitesi için geliştirilen bu masaüstü prototipi, güvenlik kameralarının izlediği alanlarda kişileri pasif olarak tespit eder. OpenCV ve MediaPipe yüz algılar; DeepFace, görüntüyü kayıtlı yetkili yüzlerle karşılaştırır. Sonuçlar PostgreSQL'e kaydedilir ve uygulama arayüzünde gösterilir.
 
-🎓 **Zonguldak Bülent Ecevit Üniversitesi** (akademik amaçlı prototip)
+Bu yazılım bir kapı kilidi veya geçiş kontrol cihazı değildir. Kamera görüntüsünü izler, şüpheli durumlarda uyarı verir ve olay geçmişi tutar. Sesli alarm üretmez.
 
-Gerçek zamanlı kamera görüntüsünde yüz algılar (OpenCV), DeepFace (VGG-Face) ile kayıtlı yetkili kişilerle karşılaştırır, sonucu PostgreSQL'e yazar ve yetkisiz kişi tespitinde masaüstü arayüzünde uyarı penceresi gösterir (sesli alarm yoktur).
+## Özellikler
 
-## Hızlı başlangıç
+- PyQt5 masaüstü arayüzü: Genel Bakış, Yüz Kaydı, Kullanıcı Listesi, Canlı Kamera İzleme ve Giriş/Çıkış Kayıtları.
+- MediaPipe ile kamera karelerinde ve kayıt fotoğraflarında yüz algılama.
+- DeepFace VGG-Face ile yetkili yüz eşleştirme; bilinmeyen kişi tespitinde uyarı ve görüntü kaydı.
+- Kamera görüntüsünün örtülmesi, kararması, donması veya kameradan kare alınamaması için pasif kamera sağlığı izlemesi.
+- Genel Bakış'ta kamera kesintisi bildirimi ve günlük kesinti geçmişi. Başlangıç, bitiş ve toplam süre mevcut kamera olay kayıtlarından hesaplanır. Kamera elle durdurulursa açık kesintiler durdurma anında kapatılır.
+- PostgreSQL erişim kayıtları ve Excel'e aktarma.
 
-```bash
-# 1) Ortam (Python 3.10 – 3.12)
-python -m venv .venv
-.venv\Scripts\activate            # Linux/macOS: source .venv/bin/activate
-pip install -r requirements.txt
+## Gereksinimler
 
-# 2) PostgreSQL: veritabanını oluşturun (PostgreSQL kurulu ve çalışıyor olmalı)
-createdb -U postgres yuz_tanima
+- Python 3.10–3.12
+- PostgreSQL
+- Kamera ile canlı izleme için erişilebilir bir kamera
+- İlk DeepFace tanımasında VGG-Face ağırlıklarının indirilmesi için internet bağlantısı
 
-# 3) Yapılandırma: örneği kopyalayıp doldurun (DB parolası, yönetici girişi)
-copy .env.example .env            # Linux/macOS: cp .env.example .env
+Python paketleri `requirements.txt` içinde listelenmiştir. Projede MediaPipe'ın BlazeFace modeli `models/blaze_face_short_range.tflite` yolunda bulunur.
 
-# 4) Tabloları kurun ve bağlantıyı deneyin
-python -m yuz_tanima_app.veritabani kur
-python -m yuz_tanima_app.veritabani test
+## Kurulum
 
-# 5) Uygulamayı başlatın (herhangi bir klasörden çalışır)
-python main.py
+Komutlar Windows PowerShell içindir. Linux/macOS için sanal ortamı etkinleştirme ve dosya kopyalama komutları parantez içinde verilmiştir.
+
+1. Projeyi indirin veya klonlayın ve proje klasörüne geçin.
+
+2. Sanal ortam oluşturup bağımlılıkları yükleyin:
+
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
+
+   Linux/macOS etkinleştirme komutu: `source .venv/bin/activate`.
+
+3. PostgreSQL'de `yuz_tanima` adlı veritabanı oluşturun:
+
+   ```powershell
+   createdb -U postgres yuz_tanima
+   ```
+
+   `createdb` komutu bulunamazsa PostgreSQL'in `psql` aracından `CREATE DATABASE yuz_tanima;` çalıştırın.
+
+4. Ortam ayarlarını oluşturun ve düzenleyin:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+   Linux/macOS: `cp .env.example .env`. `.env` içindeki PostgreSQL parolasını ve yönetici giriş bilgilerini kendi ortamınıza göre değiştirin. `.env` dosyasını Git'e eklemeyin.
+
+5. Tabloları hazırlayıp bağlantıyı doğrulayın:
+
+   ```powershell
+   python -m yuz_tanima_app.veritabani kur
+   python -m yuz_tanima_app.veritabani test
+   ```
+
+6. Uygulamayı başlatın:
+
+   ```powershell
+   python main.py
+   ```
+
+Uygulama yolları çalışma klasörüne değil, proje köküne göre çözer; `main.py` dosyasını proje kökünden başlatın.
+
+## Yapılandırma
+
+Uygulama proje kökündeki `.env` dosyasını veya işletim sistemi ortam değişkenlerini kullanır.
+
+| Değişken | Açıklama | Varsayılan |
+| --- | --- | --- |
+| `YUZ_DB_HOST` | PostgreSQL sunucusu | `localhost` |
+| `YUZ_DB_PORT` | PostgreSQL portu | `5432` |
+| `YUZ_DB_NAME` | Veritabanı adı | `yuz_tanima` |
+| `YUZ_DB_USER` | PostgreSQL kullanıcısı | `postgres` |
+| `YUZ_DB_PASSWORD` | PostgreSQL parolası | Tanımsız |
+| `YUZ_DB_TIMEOUT` | Bağlantı zaman aşımı (saniye) | `5` |
+| `YUZ_ADMIN_USER` | Demo arayüz yöneticisi | Tanımsız |
+| `YUZ_ADMIN_PASSWORD` | Demo arayüz parolası | Tanımsız |
+| `YUZ_KAMERA_INDEKSI` | OpenCV kamera indeksi | `0` |
+
+Yönetici hesabı `.env.example` içinde yalnızca örnek değerlerle gelir. Kendi değerlerinizi belirleyin. Bu tek hesaplı giriş mekanizması deneme sınırı veya parola hash'i sağlamaz; üretim kimlik doğrulaması olarak kullanılmamalıdır.
+
+## Kullanım akışı
+
+1. Giriş penceresi, `YUZ_ADMIN_USER` ve `YUZ_ADMIN_PASSWORD` değerlerini doğrular.
+2. Yüz Kaydı sayfasından yetkili kişi ve fotoğraf eklenir. Fotoğraf `yuzler/` klasörüne alınır; kullanıcı bilgileri `yetkili_kisiler` tablosunda tutulur.
+3. Canlı Kamera İzleme başlatıldığında kamera kareleri MediaPipe ile taranır. Yüz eşleştirmesi, arka plan iş parçacığında DeepFace ile yapılır.
+4. Yetkili eşleşmeleri giriş kayıtlarına yazılır. Bilinmeyen kişi için kare görüntüsü `snapshots/` altına kaydedilir; olay `yetkisiz_kayitlar` tablosuna ve `security_log.json` dosyasına eklenir.
+5. Genel Bakış ve Giriş/Çıkış Kayıtları, veritabanındaki kişi ve kamera olaylarını gösterir. Geçmiş kayıtları Excel'e aktarılabilir.
+
+Tanıma tekrar bildirim aralığı `BILDIRIM_BEKLEME_SN` ile belirlenir. Yüz kararında tek karelik eşleşmeye dayanılmaz; `KARAR_MIN_ORNEK` art arda örnek kullanılır. Diğer kamera ve tanıma eşikleri `yuz_tanima_app/config.py` içindedir.
+
+## Kamera kesintisi takibi
+
+Kamera sağlığı izlemesi, kareleri küçülterek analiz eder; ham kamera görüntülerini kamera olayı kaydı olarak saklamaz.
+
+- Görüntü önceki sahneye göre belirgin biçimde değişip uzun süre düşük ayrıntılı kalırsa örtülme şüphesi oluşturur. Varsayılan eşik 2,5 saniyedir.
+- Neredeyse siyah veya değişmeyen kareler 8 saniye sürerse ayrı olay oluşturur.
+- Kameradan kare okunamazsa erişim kesintisi olayı başlatılır; görüntü geri geldiğinde kapatılır.
+- Her olayın aktif ve çözüldü geçişleri mevcut `giris_kayitlari` tablosuna yazılır. Yeni tablo veya şema değişikliği gerekmez. Kamera durum kodları `VARCHAR(20)` ile uyumlu ve `CAMERA_` önekini korur.
+- Genel Bakış bu geçişleri eşleştirip başlangıç, bitiş ve süreyi gösterir. Operatör kamerayı durdurduğunda açık olaylar o anda kapatılır; elle durdurma sonrası süre artmaya devam etmez.
+
+Bu kontroller kamera görüntüsündeki şüpheli değişimleri gösterir; kasıtlı müdahalenin kesin kanıtı değildir. Sistem pasif izleme yapar, canlılık (liveness) veya göz kırpma zorunluluğu içermez.
+
+## Veriler ve günlükler
+
+| Konum | İçerik |
+| --- | --- |
+| `veritabani/schema.sql` | PostgreSQL tablo tanımları |
+| `known_faces/`, `yuzler/` | Yetkili kişilerin yerel yüz fotoğrafları |
+| `snapshots/` | Bilinmeyen kişi tespitlerinde alınan görüntüler |
+| `security_log.json` | Yerel tanıma olay günlüğü |
+| `security_system.log` | Uygulama, kamera, veritabanı ve hata günlükleri |
+| `arsiv/silinen_yuzler/` | Silinen kullanıcıların arşivlenen yüz dosyaları |
+
+Yüz görüntüleri, `.env` ve günlük dosyaları hassas veri içerir. Bunlar depoya eklenmemelidir; kişisel veri saklama ve silme politikalarını uygulama ortamınıza göre belirleyin. `schema.sql` mevcut tabloları `CREATE TABLE IF NOT EXISTS` ile oluşturur; var olan tabloları otomatik olarak dönüştürmez.
+
+## Proje yapısı
+
+```text
+main.py                         Uygulama başlangıcı ve günlükleme
+yuz_tanima_app/
+  giris.py                      Yönetici giriş penceresi
+  dashboard.py                  Uygulama sayfaları ve kullanıcı etkileşimi
+  kamera.py                     Kamera iş parçacığı ve tanıma akışı
+  camera_health.py              Kamera karelerindeki anormalliklerin tespiti
+  yuz_bulucu.py                 MediaPipe yüz algılama
+  yuz_tanima.py                 DeepFace eşleştirme ve yüz kaynağı yönetimi
+  veritabani.py                 PostgreSQL erişimi ve kamera olayları
+  config.py                     Ortam ayarları, dosya yolları ve eşikler
+  arayuz_ortak.py                Ortak renkler ve arayüz bileşenleri
+models/                         MediaPipe BlazeFace modeli
+ui/login.ui                     Qt Designer giriş arayüzü
+veritabani/schema.sql           Veritabanı şeması
+tests/                          Otomatik testler
+arsiv/                          Kullanılmayan eski sürümler
 ```
-
-İlk kamera analizinde DeepFace VGG-Face ağırlıklarını (~580 MB) internetten indirir; bu bir kez olur.
-MediaPipe'ın BlazeFace kısa mesafe modeli `models/blaze_face_short_range.tflite` olarak depoya eklenmiştir.
-
-### Proje kökünde bulunması gereken dosyalar
-Depoda bulunmayan (veya `.gitignore` ile dışarıda tutulan) şu öğeleri proje köküne koyun:
-
-| Öğe | Zorunlu mu? |
-|---|---|
-| `ui/login.ui` (nesne adları: `logoLabel`, `backgroundLabel`, `loginFrame`, `loginButton`, `usernamenput`, `passwordInput`) | **Evet** — yoksa açık bir hata mesajı verilir |
-| `logo.png`, `login_bg.png` | Hayır — yoksa uyarı loglanır, pencere görselsiz açılır |
-| `known_faces/`, `yuzler/` | Hayır — mevcut yüz fotoğraflarınız; aşağıya bakın |
-| `main_window.ui` | Hiçbir kod kullanmıyor; yalnızca saklanıyor |
-
-> `usernamenput` bir yazım hatası gibi görünür ama `login.ui` içindeki gerçek nesne adıdır; kodda bilerek aynen bırakılmıştır.
-
-## Yapılandırma (`.env`)
-
-| Değişken | Anlamı |
-|---|---|
-| `YUZ_DB_HOST`, `YUZ_DB_PORT`, `YUZ_DB_NAME`, `YUZ_DB_USER`, `YUZ_DB_PASSWORD` | PostgreSQL bağlantısı |
-| `YUZ_ADMIN_USER`, `YUZ_ADMIN_PASSWORD` | Giriş ekranı kullanıcısı. **Varsayılan yoktur**; tanımlı değilse giriş yapılamaz ve neden belirtilir |
-| `YUZ_KAMERA_INDEKSI` | Kamera numarası (varsayılan 0) |
-
-## Klasör yapısı
-
-```
-.
-├── main.py                      # tek başlatma noktası
-├── yuz_tanima_app/
-│   ├── config.py                # yollar, ortam değişkenleri, sabitler
-│   ├── veritabani.py            # PostgreSQL katmanı (hataları yutmaz)
-│   ├── yuz_tanima.py            # yetkili yüzlerin yüklenmesi + DeepFace doğrulama
-│   ├── kamera.py                # kamera thread'i, algılama, olay sinyalleri
-│   ├── giris.py                 # giriş penceresi (ui/login.ui)
-│   ├── dashboard.py             # ana pencere ve 5 sayfa
-│   └── arayuz_ortak.py          # renkler, widget yardımcıları, diyaloglar
-├── models/blaze_face_short_range.tflite # MediaPipe yüz algılama modeli
-├── veritabani/schema.sql        # tablolar (kodun sorgularından çıkarıldı)
-├── tests/                       # pytest
-├── arsiv/                       # eski sürümler (çalıştırılmaz) — arsiv/README.md
-├── ui/, logo.png, login_bg.png  # (sizin dosyalarınız)
-├── known_faces/, yuzler/        # yetkili yüz fotoğrafları (git'e girmez)
-├── snapshots/                   # bilinmeyen kişi görüntüleri (git'e girmez)
-├── .env.example  requirements.txt  requirements-dev.txt  pytest.ini
-```
-
-## Nasıl çalışır
-
-1. **Giriş** → `ui/login.ui`; bilgiler `.env`'den doğrulanır.
-2. **Yüz Kaydı** → fotoğraf `yuzler/` altına kopyalanır, kişi `yetkili_kisiler` tablosuna eklenir.
-3. **Canlı İzleme** → kamera thread'i MediaPipe Face Detector ile karelerde yüz bulur; her `KARE_ATLAMA` karede bir, arka plan thread'inde DeepFace ile tüm yetkili yüzlerle karşılaştırır.
-4. **Sonuç** → yetkili: `giris_kayitlari` + `security_log.json`; yetkisiz: `snapshots/` görüntüsü + `yetkisiz_kayitlar` + uyarı penceresi. Aynı kişi için kayıt/bildirim `BILDIRIM_BEKLEME_SN` (10 sn) aralıklıdır.
-5. **Yetkili listesi** = veritabanındaki **Aktif** kullanıcılar + (veritabanında karşılığı olmayan) eski `known_faces/` dosyaları. Pasif/silinmiş kullanıcılar tanınmaz. Kullanıcı silindiğinde fotoğrafları **silinmez**, `arsiv/silinen_yuzler/` altına taşınır.
-
-## Kamera görüntüsü sağlığı
-
-Canlı izleme; kare parlaklığını, önceki sahneye göre değişimi, görüntü ayrıntısını ve ardışık küçültülmüş kare farkını ayarlanabilir eşiklerle denetler. Önceki sahneden belirgin biçimde farklı, geniş ölçüde düz/ayrıntısız bir görüntü 2,5 saniye sürerse (ör. el veya beyaz mendil kamerayı kapatırsa) örtülme şüphesi bildirir. Neredeyse siyah veya neredeyse değişmeyen görüntü 8 saniye sürerse ayrı uyarı verir; okunamayan kare anında uyarı üretir. Bunlar kesin ihlal kanıtı değildir. Kısa değişimler olay oluşturmaz; görüntü normale dönünce çözülme kaydı eklenir. Kamera olayları mevcut `giris_kayitlari` tablosunda `CAMERA_*` durumlarıyla tutulur; şema değişikliği gerekmez ve bu satırlar kişi giriş sayaçlarına dahil edilmez.
-
-## Veritabanı yokken davranış
-
-Açılışta bağlantı ve tablolar denetlenir. Sorun varsa açıklayıcı bir uyarı gösterilir, sol menüde kalıcı **"⚠ Veritabanı bağlantısı yok"** etiketi çıkar (üzerine gelince ayrıntı) ve uygulama sınırlı modda sürer: kamera/tanıma çalışır, olay logu `security_log.json`'a yazılır, ama veritabanı kayıtları yazılamaz ve kullanıcı listesi/kaydı çalışmaz. Hatalar `security_system.log`'a yazılır; başarılı gibi gösterilmez.
 
 ## Testler
 
-```bash
+Temel test bağımlılıklarını yükleyin ve proje kökünde çalıştırın:
+
+```powershell
 pip install -r requirements-dev.txt
-pytest                                           # PostgreSQL/kamera gerektirmeyen testler
-# Gerçek PostgreSQL ile (ASIL veritabanınızı kullanmayın; tablolar silinip yeniden yaratılır):
-set YUZ_TEST_DB_NAME=yuz_tanima_test             # + isteğe bağlı YUZ_TEST_DB_HOST/PORT/USER/PASSWORD
 pytest
-# DeepFace ile uçtan uca (ağırlıkları indirir, scikit-image gerekir):
-set YUZ_TEST_DEEPFACE=1 & pytest tests/test_deepface_opsiyonel.py
 ```
 
-## Bilinen sınırlamalar
+PostgreSQL entegrasyon testleri yalnızca `YUZ_TEST_DB_NAME` tanımlandığında çalışır. Testler bu veritabanındaki tabloları silip yeniden oluşturur. **Üretim veya kişisel veritabanınız için bu değişkeni tanımlamayın; yalnızca ayrılmış bir test veritabanı kullanın.** DeepFace uçtan uca testi ayrıca `YUZ_TEST_DEEPFACE=1` ile isteğe bağlı olarak etkinleştirilir ve model ağırlıklarını indirebilir.
 
-- Giriş doğrulaması **demo** niteliğindedir (tek hesap, düz metin parola, deneme sınırı yok); üretim güvenliği sağlamaz.
-- Yüz tanıma canlı fotoğraf/maske saldırılarına (liveness) karşı korumasızdır; biyometrik veriler diskte şifrelenmeden saklanır.
-- Her analizde tüm yetkili yüzlerle tek tek karşılaştırma yapılır; kayıt sayısı arttıkça yavaşlar.
-- Arayüzdeki "Kayıt Başlat", "Düzenle", geçmiş tablosundaki 👁/🎬/📄 düğmeleri ve "Güven" sütunu orijinalde de uygulanmamıştı; olduğu gibi bırakıldı.
-- Kullanıcı silme `isim + çalışan ID` ile yapılır (şemada benzersiz anahtar yoktu).
-- MediaPipe yüz algılaması farklı kamera, mesafe ve ışık koşullarında ayrıca ölçülmelidir; yüz algılama, kimlik eşleştirme doğruluğunu tek başına garanti etmez.
+## Sınırlamalar
 
-
+- Prototip belirli kamera, ışık, mesafe ve ortam koşullarında ayrıca değerlendirilmelidir.
+- Yüz tanıma hatasız kimlik doğrulaması veya canlı kişi garantisi vermez; fotoğraf/maske saldırılarına karşı liveness kontrolü yoktur.
+- Demo yönetici girişi üretim güvenliği sağlamaz.
+- Biyometrik dosyalar uygulama tarafından şifrelenmez. Depolama erişimini ve yedekleri koruyun.
+- Kayıtlı yüz sayısı arttıkça tanıma süresi uzayabilir.
