@@ -38,21 +38,9 @@ Komutlar Windows PowerShell içindir. Linux/macOS için sanal ortamı etkinleşt
 
    Linux/macOS etkinleştirme komutu: `source .venv/bin/activate`.
 
-3. PostgreSQL'de `yuz_tanima` adlı veritabanı oluşturun:
+3. PostgreSQL yönetim aracınızdan uygulama için ayrı ve boş bir veritabanı oluşturun. Veritabanı adı ve bağlantı kullanıcısını sonraki adımda `.env` dosyasına gireceksiniz.
 
-   ```powershell
-   createdb -U postgres yuz_tanima
-   ```
-
-   `createdb` komutu bulunamazsa PostgreSQL'in `psql` aracından `CREATE DATABASE yuz_tanima;` çalıştırın.
-
-4. Ortam ayarlarını oluşturun ve düzenleyin:
-
-   ```powershell
-   Copy-Item .env.example .env
-   ```
-
-   Linux/macOS: `cp .env.example .env`. `.env` içindeki PostgreSQL parolasını ve yönetici giriş bilgilerini kendi ortamınıza göre değiştirin. `.env` dosyasını Git'e eklemeyin.
+4. Proje kökünde `.env` adlı bir dosya oluşturun. Veritabanı bağlantı ve yönetici giriş değişkenlerini bu dosyaya yerel değerlerinizle ekleyin. Değişken adları aşağıdaki tabloda listelenmiştir. `.env` dosyasını Git'e eklemeyin.
 
 5. Tabloları hazırlayıp bağlantıyı doğrulayın:
 
@@ -73,19 +61,19 @@ Uygulama yolları çalışma klasörüne değil, proje köküne göre çözer; `
 
 Uygulama proje kökündeki `.env` dosyasını veya işletim sistemi ortam değişkenlerini kullanır.
 
-| Değişken | Açıklama | Varsayılan |
-| --- | --- | --- |
-| `YUZ_DB_HOST` | PostgreSQL sunucusu | `localhost` |
-| `YUZ_DB_PORT` | PostgreSQL portu | `5432` |
-| `YUZ_DB_NAME` | Veritabanı adı | `yuz_tanima` |
-| `YUZ_DB_USER` | PostgreSQL kullanıcısı | `postgres` |
-| `YUZ_DB_PASSWORD` | PostgreSQL parolası | Tanımsız |
-| `YUZ_DB_TIMEOUT` | Bağlantı zaman aşımı (saniye) | `5` |
-| `YUZ_ADMIN_USER` | Demo arayüz yöneticisi | Tanımsız |
-| `YUZ_ADMIN_PASSWORD` | Demo arayüz parolası | Tanımsız |
-| `YUZ_KAMERA_INDEKSI` | OpenCV kamera indeksi | `0` |
+| Değişken | Açıklama |
+| --- | --- |
+| `YUZ_DB_HOST` | PostgreSQL sunucusu |
+| `YUZ_DB_PORT` | PostgreSQL portu |
+| `YUZ_DB_NAME` | Uygulama veritabanının adı |
+| `YUZ_DB_USER` | PostgreSQL bağlantı kullanıcısı |
+| `YUZ_DB_PASSWORD` | PostgreSQL parolası |
+| `YUZ_DB_TIMEOUT` | Bağlantı zaman aşımı (saniye) |
+| `YUZ_ADMIN_USER` | Yerel demo arayüz yöneticisi |
+| `YUZ_ADMIN_PASSWORD` | Yerel demo arayüz parolası |
+| `YUZ_KAMERA_INDEKSI` | OpenCV kamera indeksi |
 
-Yönetici hesabı `.env.example` içinde yalnızca örnek değerlerle gelir. Kendi değerlerinizi belirleyin. Bu tek hesaplı giriş mekanizması deneme sınırı veya parola hash'i sağlamaz; üretim kimlik doğrulaması olarak kullanılmamalıdır.
+`YUZ_ADMIN_USER` ve `YUZ_ADMIN_PASSWORD` için paylaşılan bir varsayılan yoktur; giriş yapabilmek için bu değerleri `.env` dosyanızda belirleyin. Bu tek hesaplı giriş mekanizması deneme sınırı veya parola hash'i sağlamaz; üretim kimlik doğrulaması olarak kullanılmamalıdır.
 
 ## Kullanım akışı
 
