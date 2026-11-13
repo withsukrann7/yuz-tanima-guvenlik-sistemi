@@ -12,7 +12,6 @@ from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5.QtGui import QImage
 
 from . import config
-from .liveness import LivenessDetector
 from .yuz_tanima import FaceRecognizer, gorsel_yaz
 from .yuz_bulucu import YuzBulucu, yuz_kirp
 
@@ -215,7 +214,6 @@ class KameraThread(QThread):
     def run(self):
         cap = cv2.VideoCapture(self.camera_index)
         yuz_bulucu = None
-        liveness = None
         try:
             if not cap.isOpened():
                 msg = f"Kamera açılamadı (indeks {self.camera_index}). Bağlantıyı ve başka bir uygulamanın kullanıp kullanmadığını kontrol edin."
@@ -223,7 +221,6 @@ class KameraThread(QThread):
                 self.hata.emit(msg)
                 return
             yuz_bulucu = YuzBulucu(video=True)
-            liveness = LivenessDetector()
             logger.info("Kamera thread'i başlatıldı.")
 
             while not self._stop_flag:
@@ -244,23 +241,16 @@ class KameraThread(QThread):
                         self.current_color_bgr = (128, 128, 128)
                         if self._yuzsuz_kare >= config.YUZSUZ_SIFIRLAMA_KARE:
                             self._oylar.clear()
-                            liveness.reset()
                 else:
                     self._yuzsuz_kare = 0
-                    x, y, w, h = max(yuzler, key=lambda f: f[2] * f[3])
-                    if min(w, h) < config.MIN_YUZ_KENARI:
-                        with self._lock:
-                            self.current_label = "Yuz cok kucuk - yaklasin"
-                            self.current_color_bgr = (0, 180, 255)
-                    else:
-                        liveness_crop = frame[y:y + h, x:x + w]
-                        liveness_passed = liveness.update(liveness_crop, self._video_ms())
-                        if not liveness_passed:
+                    if (not self._analysis_running
+                            and self.frame_count % config.KARE_ATLAMA == 0):
+                        x, y, w, h = max(yuzler, key=lambda f: f[2] * f[3])
+                        if min(w, h) < config.MIN_YUZ_KENARI:
                             with self._lock:
-                                self.current_label = "Canlilik kontrolu: goz kirpin"
+                                self.current_label = "Yuz cok kucuk - yaklasin"
                                 self.current_color_bgr = (0, 180, 255)
-                        elif (not self._analysis_running
-                                and self.frame_count % config.KARE_ATLAMA == 0):
+                        else:
                             face_crop = yuz_kirp(frame, (x, y, w, h), config.YUZ_KIRPMA_PAYI)
                             if face_crop is not None:
                                 full_frame_copy = frame.copy()
@@ -283,8 +273,6 @@ class KameraThread(QThread):
             logger.exception("Kamera döngüsü beklenmedik şekilde durdu")
             self.hata.emit(f"Kamera beklenmedik şekilde durdu: {e}")
         finally:
-            if liveness is not None:
-                liveness.close()
             if yuz_bulucu is not None:
                 yuz_bulucu.close()
             cap.release()
