@@ -8,9 +8,8 @@ import unicodedata
 from datetime import datetime
 
 import cv2
-import numpy as np
 from PyQt5.QtCore import QThread, pyqtSignal
-from PyQt5.QtGui import QColor, QFont, QImage, QPainter
+from PyQt5.QtGui import QImage
 
 from . import config
 from .liveness import LivenessDetector
@@ -203,30 +202,10 @@ class KameraThread(QThread):
         overlay = frame.copy()
         cv2.rectangle(overlay, (0, 0), (frame.shape[1], 50), (0, 0, 0), -1)
         cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
-        if label == "Canlılık doğrulanamadı! Tekrar deneyin.":
-            height, width = frame.shape[:2]
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            image = QImage(rgb.data, width, height, width * 3, QImage.Format_RGB888)
-            image = image.copy().convertToFormat(QImage.Format_ARGB32)
-            painter = QPainter(image)
-            painter.setPen(QColor(220, 0, 0))
-            font = QFont("Segoe UI")
-            font.setPixelSize(22)
-            font.setBold(True)
-            painter.setFont(font)
-            painter.drawText(10, 35, label)
-            painter.end()
-            painted = image.convertToFormat(QImage.Format_RGB888)
-            pixels = painted.bits()
-            pixels.setsize(painted.byteCount())
-            rgb = np.frombuffer(pixels, dtype=np.uint8).reshape(height, width, 3)
-            frame[:] = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        else:
-            cv2.putText(frame, ascii_cevir(label), (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.85, color_bgr, 2)
-        if label != "Canlılık doğrulanamadı! Tekrar deneyin.":
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            cv2.putText(frame, ts, (frame.shape[1] - 225, 35),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
+        cv2.putText(frame, label, (10, 35), cv2.FONT_HERSHEY_SIMPLEX, 0.85, color_bgr, 2)
+        ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cv2.putText(frame, ts, (frame.shape[1] - 225, 35),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 200, 200), 1)
         if running:
             cv2.putText(frame, "Analiz ediliyor...", (10, frame.shape[0] - 12),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 200, 255), 1)
@@ -237,7 +216,6 @@ class KameraThread(QThread):
         cap = cv2.VideoCapture(self.camera_index)
         yuz_bulucu = None
         liveness = None
-        liveness_warning_until = None
         try:
             if not cap.isOpened():
                 msg = f"Kamera açılamadı (indeks {self.camera_index}). Bağlantıyı ve başka bir uygulamanın kullanıp kullanmadığını kontrol edin."
@@ -258,52 +236,30 @@ class KameraThread(QThread):
 
                 self.frame_count += 1
                 yuzler = yuz_bulucu.tespit_et(frame, self._video_ms())
-                warning_active = False
-                if liveness_warning_until is not None:
-                    if time.monotonic() >= liveness_warning_until:
-                        liveness.reset()
-                        liveness_warning_until = None
-                    else:
-                        warning_active = True
 
                 if len(yuzler) == 0:
                     self._yuzsuz_kare += 1
                     with self._lock:
-                        if warning_active:
-                            self.current_label = "Canlılık doğrulanamadı! Tekrar deneyin."
-                            self.current_color_bgr = (0, 0, 220)
-                        else:
-                            self.current_label = "Yuz Algilanmadi"
-                            self.current_color_bgr = (128, 128, 128)
+                        self.current_label = "Yuz Algilanmadi"
+                        self.current_color_bgr = (128, 128, 128)
                         if self._yuzsuz_kare >= config.YUZSUZ_SIFIRLAMA_KARE:
                             self._oylar.clear()
                             liveness.reset()
                 else:
                     self._yuzsuz_kare = 0
                     x, y, w, h = max(yuzler, key=lambda f: f[2] * f[3])
-                    if warning_active:
+                    if min(w, h) < config.MIN_YUZ_KENARI:
                         with self._lock:
-                            self.current_label = "Canlılık doğrulanamadı! Tekrar deneyin."
-                            self.current_color_bgr = (0, 0, 220)
+                            self.current_label = "Yuz cok kucuk - yaklasin"
+                            self.current_color_bgr = (0, 180, 255)
                     else:
                         liveness_crop = frame[y:y + h, x:x + w]
-                        liveness_status = liveness.update(liveness_crop, self._video_ms())
-                        if liveness_status == "failed":
-                            liveness_warning_until = time.monotonic() + 2.5
-                            with self._lock:
-                                self._oylar.clear()
-                                self.current_label = "Canlılık doğrulanamadı! Tekrar deneyin."
-                                self.current_color_bgr = (0, 0, 220)
-                        elif min(w, h) < config.MIN_YUZ_KENARI:
-                            with self._lock:
-                                self.current_label = "Yuz cok kucuk - yaklasin"
-                                self.current_color_bgr = (0, 180, 255)
-                        elif liveness_status == "pending":
+                        liveness_passed = liveness.update(liveness_crop, self._video_ms())
+                        if not liveness_passed:
                             with self._lock:
                                 self.current_label = "Canlilik kontrolu: goz kirpin"
                                 self.current_color_bgr = (0, 180, 255)
-                        elif (liveness_status == "passed"
-                                and not self._analysis_running
+                        elif (not self._analysis_running
                                 and self.frame_count % config.KARE_ATLAMA == 0):
                             face_crop = yuz_kirp(frame, (x, y, w, h), config.YUZ_KIRPMA_PAYI)
                             if face_crop is not None:
